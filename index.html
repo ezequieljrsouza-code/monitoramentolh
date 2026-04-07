@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MONITORAMENTO LH - SPA1</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #f0f2f5;
+  padding: 10px;
+  font-size: 14px;
+  color: #222;
+}
+
+.header {
+  background: linear-gradient(135deg, #ff6600, #cc3300);
+  color: white;
+  text-align: center;
+  padding: 15px 20px;
+  font-size: 22px;
+  font-weight: 800;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 12px rgba(255,102,0,.35);
+}
+
+/* Área retrátil para os controles manterem a tela limpa */
+details.controls-accordion {
+  margin-bottom: 10px;
+}
+details.controls-accordion summary {
+  background: #333;
+  color: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  list-style: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,.1);
+  transition: background 0.2s;
+}
+details.controls-accordion summary:hover {
+  background: #444;
+}
+details.controls-accordion summary::-webkit-details-marker {
+  display: none;
+}
+
+.controls {
+  background: white;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+#fileInput { flex: 1; min-width: 160px; font-size: 13px; }
+
+.btn {
+  border: none;
+  padding: 8px 13px;
+  border-radius: 6px;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: filter .15s;
+}
+.btn:hover { filter: brightness(1.12); }
+.btn-upload { background: #0066cc; }
+.btn-print  { background: #28a745; }
+.btn-clear  { background: #dc3545; }
+
+#uploadStatus {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 5px;
+  background: #f0f0f0;
+  min-width: 80px;
+}
+
+.date-row {
+  background: white;
+  border-radius: 10px;
+  padding: 8px 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+.date-row label { font-weight: 700; font-size: 13px; }
+#datePicker {
+  padding: 5px 8px;
+  border: 1.5px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+#dateInfo { font-size: 12px; color: #666; }
+
+.dashboard {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.card {
+  background: white;
+  padding: 12px 10px;
+  border-radius: 10px;
+  flex: 1;
+  min-width: 80px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0,0,0,.1);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: #555;
+}
+.card span {
+  display: block;
+  font-size: 28px;
+  font-weight: 900;
+  color: #ff6600;
+  margin-top: 2px;
+}
+
+.table-wrap { overflow-x: auto; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+table { width: 100%; border-collapse: collapse; background: white; min-width: 680px; }
+
+thead th {
+  background: #ff6600;
+  color: white;
+  padding: 9px 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+}
+tbody td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #eee;
+  text-align: center;
+  font-size: 13px;
+}
+tbody tr:last-child td { border-bottom: none; }
+
+select {
+  padding: 3px 5px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid #bbb;
+  background: white;
+  cursor: pointer;
+  color: #222;
+  appearance: auto;
+}
+.placa { font-weight: 800; color: #fff; letter-spacing: .5px; }
+
+/* Cores de status bem definidas para hierarquia visual */
+.st-Concluida  { background: #1a6e35; color: #fff; }
+.st-Descarga   { background: #f5c800; color: #000; }
+.st-Docada     { background: #990000; color: #fff; }
+.st-Fos        { background: #1a5cb5; color: #fff; }
+.st-NaoChegou  { background: #e07b00; color: #fff; }
+.st-Aguardando { background: #444;    color: #fff; }
+.st-Bloqueada  { background: #4a2e7e; color: #fff; }
+
+.st-Concluida  select { background:#1a6e35; color:#fff; border-color:rgba(255,255,255,.4); }
+.st-Docada     select { background:#990000; color:#fff; border-color:rgba(255,255,255,.4); }
+.st-Fos        select { background:#1a5cb5; color:#fff; border-color:rgba(255,255,255,.4); }
+.st-NaoChegou  select { background:#e07b00; color:#fff; border-color:rgba(255,255,255,.4); }
+.st-Aguardando select { background:#444;    color:#fff; border-color:rgba(255,255,255,.4); }
+.st-Bloqueada  select { background:#4a2e7e; color:#fff; border-color:rgba(255,255,255,.4); }
+.st-Descarga   select { background:#f5c800; color:#000; border-color:rgba(0,0,0,.2); }
+
+#overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  color: white;
+  font-size: 17px;
+  font-weight: 700;
+}
+#overlay.show { display: flex; }
+.spin {
+  width: 46px; height: 46px;
+  border: 5px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: rot .75s linear infinite;
+}
+@keyframes rot { to { transform: rotate(360deg); } }
+.empty-msg { padding: 24px; color: #999; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div id="overlay"><div class="spin"></div><span id="overlayMsg">Carregando...</span></div>
+
+<details class="controls-accordion" open>
+  <summary>⚙️ Atualização de Dados e Arquivos CSV/XLSX</summary>
+  <div class="controls">
+    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+    <button id="btnUpload" class="btn btn-upload">⬆ Salvar na Nuvem</button>
+    <button id="btnPrint"  class="btn btn-print">🖨 Print JPG</button>
+    <button id="btnClear"  class="btn btn-clear">🗑 Limpar Tudo</button>
+    <span id="uploadStatus">—</span>
+  </div>
+</details>
+
+<div id="printArea">
+  <div class="header">🚛 MONITORAMENTO LH — SPA1</div>
+
+  <div class="date-row">
+    <label>📅 Data de referência:</label>
+    <input type="date" id="datePicker">
+    <span id="dateInfo"></span>
+  </div>
+
+  <div class="dashboard">
+    <div class="card">Total<span id="kpiTotal">0</span></div>
+    <div class="card">Concluídas<span id="kpiConcluida">0</span></div>
+    <div class="card">Docadas<span id="kpiDocada">0</span></div>
+    <div class="card">Bloqueadas<span id="kpiBloqueada">0</span></div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>DOCA</th><th>REVERSA</th><th>PLACA</th>
+          <th>YMS IN</th><th>YMS OUT</th><th>PACOTES</th>
+          <th>STATUS</th><th>PERFIL</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="9" class="empty-msg">Carregando dados do Firebase…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js"
+import {
+  getFirestore, collection, doc, setDoc,
+  getDocs, onSnapshot, orderBy, query, writeBatch
+} from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js"
+
+let db = null, unsubManual = null, unsubCSV = null
+let allRows = [], filtered = [], manualMap = {}
+let selectedDate = todayStr()
+
+const $ = id => document.getElementById(id)
+
+$("btnUpload").addEventListener("click",   handleUpload)
+$("btnPrint").addEventListener("click",    exportImg)
+$("btnClear").addEventListener("click",    clearAll)
+$("datePicker").addEventListener("change", applyFilter)
+$("tbody").addEventListener("change", e => {
+  const { id, field } = e.target.dataset
+  if (id && field) updateDB(id, field, e.target.value)
+})
+
+$("datePicker").value = selectedDate
+updateDateInfo()
+
+try {
+  initDB()
+  loading("Carregando dados…")
+  await loadCloudCSV()   
+  await loadManual()     
+  applyFilter()          
+  done()                 
+  startRealtime()        
+} catch(e) {
+  done(); setStatus("Erro Firebase: Configuração pendente.", "red"); console.error(e)
+}
+
+function initDB() {
+  // 🔴 SUBSTITUA ESTAS INFORMAÇÕES PELAS DO SEU PROJETO FIREBASE 🔴
+  const cfg = {
+    apiKey:        "AIzaSyDgrBR-FcSf5TPAK2bzxHg9vG7OJIJz2po",
+    authDomain:    "monitoramento-rotas-spa1.firebaseapp.com",
+    projectId:     "monitoramento-rotas-spa1",
+    storageBucket: "monitoramento-rotas-spa1.firebasestorage.app",
+    messagingSenderId: "563867670719",
+    appId:         "1:563867670719:web:7f61b6f9b21aa3d23dce0a"
+    measurementId: "G-8EHM7SMWVP"
+  }
+  const app = getApps().length ? getApps()[0] : initializeApp(cfg)
+  db = getFirestore(app)
+}
+
+function todayStr() {
+  const d = new Date()
+  return [d.getFullYear(), String(d.getMonth()+1).padStart(2,"0"), String(d.getDate()).padStart(2,"0")].join("-")
+}
+function loading(msg) { $("overlayMsg").textContent = msg || "Carregando…"; $("overlay").classList.add("show") }
+function done() { $("overlay").classList.remove("show") }
+function setStatus(msg, color) { $("uploadStatus").textContent = msg; $("uploadStatus").style.color = color||"#444" }
+function updateDateInfo() {
+  $("dateInfo").textContent = $("datePicker").value === todayStr() ? "📌 Hoje" : "📆 " + $("datePicker").value
+}
+function v(obj, key) { const r = obj[key]; return (r == null) ? "" : String(r).trim() }
+
+function normalizeDate(raw) {
+  if (!raw && raw !== 0) return ""
+  const s = String(raw).trim()
+  if (!s || s === "nan") return ""
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.replace("T", " ")
+  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[T\s]+(\d{1,2}:\d{2}))?/)
+  if (dmy) {
+    const [, d, m, y, t] = dmy
+    return `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}` + (t ? " " + t + ":00" : " 00:00:00")
+  }
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}:\d{2}))?/)
+  if (mdy) {
+    const [, m, d, y, t] = mdy
+    return `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}` + (t ? " " + t + ":00" : " 00:00:00")
+  }
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    const date = XLSX.SSF.parse_date_code(parseFloat(s))
+    if (date) {
+      return `${date.y}-${String(date.m).padStart(2,"0")}-${String(date.d).padStart(2,"0")} ` +
+             `${String(date.H).padStart(2,"0")}:${String(date.M).padStart(2,"0")}:00`
+    }
+  }
+  return s
+}
+
+function handleUpload() {
+  if (!db) { alert("Configure o Firebase primeiro."); return }
+  const file = $("fileInput").files[0]
+  if (!file) { setStatus("⚠ Selecione um arquivo.", "orange"); return }
+  const name = file.name.toLowerCase()
+  if (name.endsWith(".xlsx") || name.endsWith(".xls")) readXLSX(file)
+  else readCSV(file)
+}
+
+function readXLSX(file) {
+  loading("Lendo XLSX…")
+  const reader = new FileReader()
+  reader.onload = e => {
+    try {
+      const wb   = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: false })
+      const ws   = wb.Sheets[wb.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json(ws, { raw: true, defval: "" })
+      const dateCols = ["Destino ETA","Destino ATA","Destino ATD","Origem ETA","Origem ATA","Origem ATD"]
+      for (const row of rows) {
+        for (const col of dateCols) {
+          if (row[col] !== "") row[col] = normalizeDate(row[col])
+        }
+      }
+      saveAndProcess(rows)
+    } catch(err) { done(); setStatus("Erro XLSX: " + err.message, "red"); console.error(err) }
+  }
+  reader.readAsArrayBuffer(file)
+}
+
+function readCSV(file) {
+  loading("Lendo CSV…")
+  Papa.parse(file, {
+    header: true, skipEmptyLines: true,
+    transformHeader: h => (h||"").replace(/^\uFEFF/,"").trim(),
+    complete: r => saveAndProcess(r.data),
+    error: e => { done(); setStatus("Erro CSV: " + e.message, "red") }
+  })
+}
+
+const CHUNK_SIZE = 200
+async function saveAndProcess(rows) {
+  allRows = rows
+  loading("Salvando no Firebase…")
+  try {
+    const col = collection(db, "lh_csv_cache")
+    const old = await getDocs(col)
+    if (!old.empty) {
+      const b = writeBatch(db); old.forEach(d => b.delete(d.ref)); await b.commit()
+    }
+    for (let i = 0; i * CHUNK_SIZE < rows.length; i++) {
+      await setDoc(doc(col, "chunk_" + String(i).padStart(3,"0")), {
+        chunk: i,
+        data: JSON.stringify(rows.slice(i * CHUNK_SIZE, (i+1) * CHUNK_SIZE)),
+        updated_at: new Date().toISOString()
+      })
+    }
+    setStatus("✅ " + rows.length + " linhas salvas!", "green")
+  } catch(e) { console.error(e); setStatus("⚠ Erro: " + e.message, "red") }
+  applyFilter()
+  done()
+}
+
+async function loadCloudCSV() {
+  try {
+    const snap = await getDocs(query(collection(db, "lh_csv_cache"), orderBy("chunk")))
+    if (snap.empty) { setStatus("Sem dados. Faça upload do arquivo.", "#888"); return }
+    let combined = []
+    snap.forEach(d => { combined = combined.concat(JSON.parse(d.data().data || "[]")) })
+    allRows = combined
+    setStatus("☁ " + allRows.length + " linhas carregadas.", "#0066cc")
+  } catch(e) { console.error(e); setStatus("Erro ao carregar: " + e.message, "red"); throw e }
+}
+
+function applyFilter() {
+  selectedDate = $("datePicker").value
+  updateDateInfo()
+  processData(allRows)
+}
+
+function processData(rows) {
+  if (!rows?.length) { filtered = []; render(); return }
+  filtered = []
+  for (const src of rows) {
+    const id        = v(src, "Route ID")
+    const motorista = v(src, "Motorista").toUpperCase()
+    const destino   = v(src, "Destino").toUpperCase()
+    const placa     = v(src, "Veículo de carga 1") || v(src, "Veículo de carga 2")
+    const dataRef   = normalizeDate(v(src, "Destino ETA"))
+    const ymsIn     = normalizeDate(v(src, "Destino ATA"))
+    const ymsOut    = normalizeDate(v(src, "Destino ATD"))
+    const pacotes   = v(src, "Pacotes")
+
+    if (!destino.includes("SPA1"))                           continue
+    if (!placa || placa.toLowerCase().includes("sem placa")) continue
+    if (motorista.includes("RODOPENHA"))                     continue
+    if (dataRef.substring(0, 10) !== selectedDate)           continue
+
+    filtered.push({ id, placa, dataRef, ymsIn, ymsOut, pacotes })
+  }
+  filtered.sort((a, b) => {
+    const aEmpty = !a.ymsIn || a.ymsIn.trim() === ""
+    const bEmpty = !b.ymsIn || b.ymsIn.trim() === ""
+    if (aEmpty && bEmpty) return 0
+    if (aEmpty) return 1
+    if (bEmpty) return -1
+    return a.ymsIn.localeCompare(b.ymsIn)
+  })
+  render()
+}
+
+const DOCAS    = ["-","D1","D2","D3","D4","D5","D6","D7","D8","D9","D10"]
+const STATUSES = ["Aguardando Doca","Concluída","Descarga iniciada","Docada","Fos","Não Chegou","Bloqueada"]
+const PERFIS   = ["Granel","Paletizada"]
+const REVERSAS = ["Não","Sim"]
+const CLS_MAP  = {
+  "Concluída":"st-Concluida","Descarga iniciada":"st-Descarga",
+  "Docada":"st-Docada","Fos":"st-Fos","Não Chegou":"st-NaoChegou",
+  "Aguardando Doca":"st-Aguardando","Bloqueada":"st-Bloqueada"
+}
+
+function mkSel(opts, cur, id, field) {
+  return `<select data-id="${id}" data-field="${field}">${
+    opts.map(o => `<option${o===cur?" selected":""}>${o}</option>`).join("")
+  }</select>`
+}
+function hhmm(dt) { return String(dt).substring(11,16) || "—" }
+
+function render() {
+  let html = "", concluidas = 0, docadas = 0, bloqueadas = 0
+  for (let i = 0; i < filtered.length; i++) {
+    const row = filtered[i]
+    const id  = row.id
+    const m   = manualMap[id] || { doca:"-", reversa:"Não", status_patio:"Aguardando Doca", perfil:"Granel" }
+    const cls = CLS_MAP[m.status_patio] || "st-Aguardando"
+    if (m.status_patio === "Concluída") concluidas++
+    if (m.status_patio === "Docada")    docadas++
+    if (m.status_patio === "Bloqueada") bloqueadas++
+    html += `
+<tr class="${cls}">
+  <td>${i+1}</td>
+  <td>${mkSel(DOCAS,    m.doca,         id,"doca")}</td>
+  <td>${mkSel(REVERSAS, m.reversa,      id,"reversa")}</td>
+  <td class="placa">${row.placa}</td>
+  <td>${hhmm(row.ymsIn)}</td>
+  <td>${hhmm(row.ymsOut)}</td>
+  <td>${row.pacotes}</td>
+  <td>${mkSel(STATUSES, m.status_patio, id,"status_patio")}</td>
+  <td>${mkSel(PERFIS,   m.perfil,       id,"perfil")}</td>
+</tr>`
+  }
+  if (!html) html = `<tr><td colspan="9" class="empty-msg">
+    Nenhum registro com destino SPA1 em <strong>${selectedDate}</strong>.<br>
+    Verifique a data selecionada ou faça upload de um arquivo atualizado.</td></tr>`
+
+  $("tbody").innerHTML          = html
+  $("kpiTotal").textContent     = filtered.length
+  $("kpiConcluida").textContent = concluidas
+  $("kpiDocada").textContent    = docadas
+  $("kpiBloqueada").textContent = bloqueadas
+}
+
+async function updateDB(id, field, value) {
+  if (!db) return
+  await setDoc(doc(db, "lh_monitoramento", id),
+    { [field]: value, updated_at: new Date().toISOString() }, { merge: true })
+}
+
+async function loadManual() {
+  try {
+    const snap = await getDocs(collection(db, "lh_monitoramento"))
+    manualMap = {}
+    snap.forEach(d => { manualMap[d.id] = { id: d.id, ...d.data() } })
+  } catch(e) { console.error(e); throw e }
+}
+
+function startRealtime() {
+  if (unsubManual) unsubManual()
+  unsubManual = onSnapshot(
+    collection(db, "lh_monitoramento"),
+    snap => {
+      snap.docChanges().forEach(ch => {
+        if (ch.type === "removed") delete manualMap[ch.doc.id]
+        else manualMap[ch.doc.id] = { id: ch.doc.id, ...ch.doc.data() }
+      })
+      render()
+    },
+    err => console.error("Realtime manual:", err)
+  )
+
+  if (unsubCSV) unsubCSV()
+  let csvFirstLoad = true
+  unsubCSV = onSnapshot(
+    query(collection(db, "lh_csv_cache"), orderBy("chunk")),
+    snap => {
+      if (csvFirstLoad) { csvFirstLoad = false; return }
+      if (snap.empty) return
+      const hasChange = snap.docChanges().some(ch => ch.type === "added" || ch.type === "removed")
+      if (!hasChange) return
+      let combined = []
+      snap.forEach(d => { combined = combined.concat(JSON.parse(d.data().data || "[]")) })
+      allRows = combined
+      setStatus("☁ Arquivo atualizado: " + allRows.length + " linhas.", "#0066cc")
+      processData(allRows)
+    },
+    err => console.error("Realtime CSV:", err)
+  )
+}
+
+async function clearAll() {
+  if (!db) return
+  if (!confirm("Apagar CSV e dados manuais do Firebase?\nEssa ação não pode ser desfeita.")) return
+  loading("Apagando…")
+  for (const name of ["lh_csv_cache","lh_monitoramento"]) {
+    const snap = await getDocs(collection(db, name))
+    if (!snap.empty) { const b = writeBatch(db); snap.forEach(d => b.delete(d.ref)); await b.commit() }
+  }
+  allRows = []; filtered = []; manualMap = {}
+  render(); setStatus("🗑 Dados apagados.", "red"); done()
+}
+// ... (resto do código anterior) ...
+
+// --- NOVA FUNÇÃO DE EXPORTAÇÃO AJUSTADA ---
+async function exportImg() {
+  loading("Gerando imagem de alta qualidade…")
+  const area = document.getElementById("printArea")
+  
+  // Opções para garantir alta qualidade e captura total sem cortes
+  const options = {
+    scale: 3,                 // Aumenta a resolução para alta qualidade (pode ser 2, 3 ou 4)
+    useCORS: true,           // Ajuda com fontes externas se houver
+    backgroundColor: "#f0f2f5", // Mantém o fundo padrão do painel
+    removeContainer: true,   // Remove bordas extras do contêiner
+    
+    // Força a captura da largura total do conteúdo da tabela
+    windowWidth: area.scrollWidth,
+    width: area.scrollWidth,
+    
+    // Garante que a altura capture tudo, ignorando a rolagem da janela
+    windowHeight: area.scrollHeight,
+    height: area.scrollHeight,
+    scrollY: -window.scrollY  // Corrige o deslocamento da rolagem vertical
+  }
+
+  try {
+    const canvas = await html2canvas(area, options)
+    const a = document.createElement("a")
+    a.download = "monitoramento_alta_resolucao_" + selectedDate + ".jpg"
+    
+    // Define a qualidade máxima para o arquivo JPEG (0.95 a 1.0)
+    a.href = canvas.toDataURL("image/jpeg", 1.0)
+    a.click()
+    done()
+    setStatus("✅ Print gerado com sucesso!", "green")
+  } catch (error) {
+    console.error("Erro ao gerar print:", error)
+    done()
+    setStatus("❌ Erro ao gerar o print.", "red")
+  }
+  }
+</script>
+</body>
+</html>
