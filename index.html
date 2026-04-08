@@ -240,14 +240,14 @@ table{
   width:100%;border-collapse:collapse;
   table-layout:fixed; /* ← colunas respeitam widths definidos */
 }
-/* Larguras das 10 colunas: #, DOCA, REV-BTN, PLACA, IN, OUT, PKG, STATUS, PERFIL */
+/* Larguras das 10 colunas: #, DOCA, REV-BTN, PLACA, IN, OUT, PCT, STATUS, PERFIL */
 col.c-num    {width:3%}
 col.c-doca   {width:8%}
 col.c-rev    {width:9%}
 col.c-placa  {width:11%}
 col.c-in     {width:6%}
 col.c-out    {width:6%}
-col.c-pkg    {width:7%}
+col.c-PCT    {width:7%}
 col.c-status {width:26%}
 col.c-perfil {width:14%}
 
@@ -287,27 +287,37 @@ tr.st-Bloqueada  td.td-status{background:var(--st-bloqueada-bg);color:var(--st-b
 
 /* ── Botão de Reversa ───────────────────────────────────────────── */
 .btn-reversa{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  display:flex;align-items:center;justify-content:center;
   width:100%;border:1.5px solid var(--border);border-radius:6px;
-  padding:3px 4px;cursor:pointer;gap:1px;
+  padding:4px 3px;cursor:pointer;
   background:var(--bg2);color:var(--text2);
-  font-family:'Barlow',sans-serif;font-weight:700;font-size:9px;
+  font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;
+  letter-spacing:.3px;
   transition:background .15s,border-color .15s,color .15s;
-  line-height:1.2;
+  white-space:nowrap;
 }
 .btn-reversa:hover{border-color:var(--accent);color:var(--accent)}
+.btn-reversa:not(.active){font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;opacity:.7}
 .btn-reversa.active{background:#7c3aed;border-color:#6d28d9;color:#fff;}
-.btn-reversa .rev-time{font-size:11px;font-weight:800;letter-spacing:.3px;color:inherit;}
-.btn-reversa .rev-label{font-size:8px;font-weight:600;opacity:.85;text-transform:uppercase;letter-spacing:.4px;}
 
-/* ── Placa + tag de reversa em linha única ──────────────────────── */
-.placa-wrap{
-  display:flex;flex-direction:column;align-items:center;gap:2px;
+/* ── Toggle MP / PKT abaixo da placa ────────────────────────────── */
+.reversa-toggles{
+  display:flex;gap:2px;margin-top:2px;justify-content:center;
 }
-.placa-line{
-  display:flex;align-items:center;justify-content:center;gap:4px;
-  flex-wrap:nowrap;white-space:nowrap;
+.rtgl{
+  font-size:7px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;
+  padding:1px 5px;border-radius:8px;cursor:pointer;border:1px solid var(--border);
+  background:var(--bg3);color:var(--text3);
+  transition:background .12s,color .12s,border-color .12s;
+  white-space:nowrap;line-height:1.4;
+  -webkit-tap-highlight-color:transparent;
 }
+.rtgl:hover{border-color:var(--text2);color:var(--text2)}
+.rtgl.on.mp  {background:#7c3aed;color:#fff;border-color:#6d28d9}
+.rtgl.on.PCT {background:#0369a1;color:#fff;border-color:#075985}
+
+/* ── Placa + tag de reversa ─────────────────────────────────────── */
+.placa-wrap{display:flex;flex-direction:column;align-items:center;gap:1px}
 .placa{
   font-family:'Barlow Condensed',sans-serif;font-weight:800;
   font-size:12px;letter-spacing:.2px;white-space:nowrap;
@@ -315,11 +325,10 @@ tr.st-Bloqueada  td.td-status{background:var(--st-bloqueada-bg);color:var(--st-b
 .reversa-tag{
   display:inline-flex;align-items:center;gap:3px;
   font-size:8px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;
-  padding:2px 6px;border-radius:10px;white-space:nowrap;
-  flex-shrink:0;
+  padding:2px 6px;border-radius:10px;white-space:nowrap;flex-shrink:0;
 }
 .reversa-tag.mp  {background:#7c3aed;color:#fff}
-.reversa-tag.pkg {background:#0369a1;color:#fff}
+.reversa-tag.PCT {background:#0369a1;color:#fff}
 
 /* ── Forçar centralização em DOCA, STATUS, PERFIL ───────────────── */
 td.td-doca, td.td-status, td.td-perfil { text-align:center !important; }
@@ -495,7 +504,7 @@ tbody tr:hover td{background:var(--bg4) !important}
           <colgroup>
             <col class="c-num"><col class="c-doca"><col class="c-rev">
             <col class="c-placa"><col class="c-in"><col class="c-out">
-            <col class="c-pkg"><col class="c-status"><col class="c-perfil">
+            <col class="c-PCT"><col class="c-status"><col class="c-perfil">
           </colgroup>
           <thead>
             <tr>
@@ -590,41 +599,47 @@ $("tbody").addEventListener("change", async e => {
 
 // Reversa button click → register or clear time
 $("tbody").addEventListener("click", async e => {
+  // ── HR INICIO button ──────────────────────────────────────────────
   const btn = e.target.closest(".btn-reversa")
-  if (!btn) return
-  // Ignore clicks on the type select inside the button
-  if (e.target.classList.contains("rev-type-sel")) return
+  if (btn) {
+    const id = btn.dataset.id
+    if (!id) return
+    if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Aguardando Doca", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
+    const already = manualMap[id].reversa_hora
+    const newTime = already ? "" : new Date().toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})
+    manualMap[id].reversa_hora = newTime
+    render()
+    const row = btn.closest("tr")
+    if (row) { row.classList.remove("saved"); void row.offsetWidth; row.classList.add("saved") }
+    setSyncStatus("loading", "Salvando…")
+    try {
+      await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, { route_id:id, reversa_hora:newTime, updated_at:new Date().toISOString() })
+      setSyncStatus("ok", "Online")
+      showToast(newTime ? `⏱ Início: ${newTime}` : "🗑 Hora apagada", "ok")
+    } catch(err) { setSyncStatus("err","Erro"); showToast("❌ Erro ao salvar","err"); console.error(err) }
+    return
+  }
 
-  const id = btn.dataset.id
-  if (!id) return
-
-  if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Aguardando Doca", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
-
-  const already = manualMap[id].reversa_hora
-  const newTime = already
-    ? ""   // segundo clique → apaga
-    : new Date().toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})
-
-  manualMap[id].reversa_hora = newTime
-  render()
-
-  // Flash row
-  const row = btn.closest("tr")
-  if (row) { row.classList.remove("saved"); void row.offsetWidth; row.classList.add("saved") }
-
-  setSyncStatus("loading", "Salvando…")
-  try {
-    await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, {
-      route_id: id,
-      reversa_hora: newTime,
-      updated_at: new Date().toISOString()
-    })
-    setSyncStatus("ok", "Online")
-    showToast(newTime ? `⏱ Reversa: ${newTime}` : "🗑 Reversa apagada", "ok")
-  } catch(err) {
-    setSyncStatus("err", "Erro")
-    showToast("❌ Erro ao salvar", "err")
-    console.error(err)
+  // ── Reversa type toggle (MP / PKT) ───────────────────────────────
+  const tgl = e.target.closest(".rtgl")
+  if (tgl) {
+    const id    = tgl.dataset.id
+    const rtype = tgl.dataset.rtype
+    if (!id) return
+    if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Aguardando Doca", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
+    // Toggle: clique no mesmo → desmarca; clique em outro → marca
+    const cur = manualMap[id].reversa_tipo || "—"
+    const newType = cur === rtype ? "—" : rtype
+    manualMap[id].reversa_tipo = newType
+    render()
+    const row = tgl.closest("tr")
+    if (row) { row.classList.remove("saved"); void row.offsetWidth; row.classList.add("saved") }
+    setSyncStatus("loading", "Salvando…")
+    try {
+      await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, { route_id:id, reversa_tipo:newType, updated_at:new Date().toISOString() })
+      setSyncStatus("ok", "Online")
+      showToast(newType !== "—" ? `✅ ${newType}` : "✅ Tipo removido", "ok")
+    } catch(err) { setSyncStatus("err","Erro"); showToast("❌ Erro ao salvar","err"); console.error(err) }
   }
 })
 
@@ -875,42 +890,34 @@ function mkSel(opts, cur, id, field, extraClass="") {
   }</select>`
 }
 
-// Botão HR INICIO: clique → salva horário; segundo clique → apaga
-// Sem select de tipo — apenas registo de hora
+// Botão HR INICIO: ativo → só o horário; inativo → label "Início"
 function mkReversaBtn(id, m) {
-  const time  = m.reversa_hora || ""
-  const active = !!time
-  if (active) {
-    return `<div class="btn-reversa active" data-id="${id}" title="Clique para apagar horário">
-      <span class="rev-time">${time}</span>
-      <span class="rev-label">início</span>
-    </div>`
+  const time = m.reversa_hora || ""
+  if (time) {
+    return `<div class="btn-reversa active" data-id="${id}" title="Clique para apagar">${time}</div>`
   }
-  return `<div class="btn-reversa" data-id="${id}" title="Registrar hora de início">
-    <span class="rev-label">Início</span>
-  </div>`
+  return `<div class="btn-reversa" data-id="${id}" title="Registrar hora de início">Início</div>`
 }
 
-// Placa: nome em negrito + select tipo de reversa + tag pill colorida
+// Placa: nome + dois mini-toggles MP / PKT + pílula quando ativo
 function placaHTML(placa, m, id) {
   const rtype = m.reversa_tipo || "—"
-  const time  = m.reversa_hora || ""
 
-  const typeOpts = RTYPES.map(o =>
-    `<option value="${o}"${o===rtype?" selected":""}>${o==="—"?"tipo…":o}</option>`
-  ).join("")
-  const typeSelect = `<select data-id="${id}" data-field="reversa_tipo"
-    style="font-size:8px;width:100%;border:1px solid var(--border);background:var(--bg3);
-    color:var(--text2);border-radius:4px;padding:1px 2px;cursor:pointer;font-weight:600;
-    text-align:center;">${typeOpts}</select>`
+  const mpOn  = rtype === "MP"
+  const pkOn  = rtype === "Pacotes"
+
+  const toggles = `<div class="reversa-toggles">
+    <span class="rtgl mp${mpOn?" on mp":""}" data-id="${id}" data-rtype="MP">MP</span>
+    <span class="rtgl PCT${pkOn?" on PCT":""}" data-id="${id}" data-rtype="Pacotes">PKT</span>
+  </div>`
 
   let tag = ""
-  if (rtype === "MP")      tag = `<span class="reversa-tag mp">↩ REVERSA MP</span>`
-  if (rtype === "Pacotes") tag = `<span class="reversa-tag pkg">↩ REV. PACOTES</span>`
+  if (mpOn) tag = `<span class="reversa-tag mp">↩ REVERSA MP</span>`
+  if (pkOn) tag = `<span class="reversa-tag PCT">↩ REV. PACOTES</span>`
 
   return `<div class="placa-wrap">
     <span class="placa">${placa}</span>
-    ${typeSelect}
+    ${toggles}
     ${tag}
   </div>`
 }
