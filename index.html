@@ -105,7 +105,21 @@ tbody td,td select,#toast{
 }
 .header-title small{font-weight:400;opacity:.75;font-size:.65em;display:block;letter-spacing:.5px}
 
-/* ── Theme toggle ───────────────────────────────────────────────── */
+/* ── Analyst badge ──────────────────────────────────────────────── */
+.analyst{
+  display:inline-flex;align-items:center;gap:6px;
+  margin-top:8px;
+  background:rgba(255,255,255,.15);
+  border:1px solid rgba(255,255,255,.25);
+  border-radius:20px;
+  padding:3px 12px 3px 8px;
+  font-size:11px;font-weight:600;letter-spacing:.3px;
+  color:rgba(255,255,255,.9);
+}
+.analyst-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:#4ade80;box-shadow:0 0 6px #4ade80;
+}
 .theme-toggle{
   background:var(--bg4);
   border:1px solid var(--border);
@@ -228,36 +242,40 @@ table{
 }
 /* Larguras das 9 colunas: #, DOCA, REV, PLACA, IN, OUT, PKG, STATUS, PERFIL */
 col.c-num    {width:4%}
-col.c-doca   {width:10%}
+col.c-doca   {width:9%}
 col.c-rev    {width:8%}
-col.c-placa  {width:12%}
-col.c-in     {width:8%}
-col.c-out    {width:8%}
+col.c-placa  {width:11%}
+col.c-in     {width:7%}
+col.c-out    {width:7%}
 col.c-pkg    {width:8%}
-col.c-status {width:26%}
-col.c-perfil {width:16%}
+col.c-status {width:28%}
+col.c-perfil {width:18%}
 
 thead th{
   background:var(--accent);color:#fff;
-  padding:8px 4px;
+  padding:8px 3px;
   font-family:'Barlow Condensed',sans-serif;
-  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  text-align:center;
   position:sticky;top:0;z-index:2;
 }
-tbody tr{transition:filter .1s}
-tbody tr:hover{filter:brightness(1.05)}
+tbody tr{transition:background .15s}
 tbody td{
-  padding:5px 4px;border-bottom:1px solid var(--border);
-  text-align:center;font-size:12px;color:var(--text);vertical-align:middle;
-  overflow:hidden;
+  padding:5px 3px;border-bottom:1px solid var(--border);
+  text-align:center;font-size:11px;color:var(--text);vertical-align:middle;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-weight:700;
 }
 tbody tr:last-child td{border-bottom:none}
 
 /* ── Status: cor SOMENTE na celula td.td-status ─────────────────── */
 tbody td{font-weight:700;color:var(--text)}
 
-td.td-status{border-radius:6px;padding:4px 6px;font-weight:800;white-space:nowrap}
+td.td-status{
+  padding:3px 4px;font-weight:800;
+  /* sem border-radius aqui — o select interno já estiliza */
+}
 
 tr.st-Concluida  td.td-status{background:var(--st-concluida-bg);color:var(--st-concluida-text)}
 tr.st-Descarga   td.td-status{background:var(--st-descarga-bg); color:var(--st-descarga-text)}
@@ -267,22 +285,36 @@ tr.st-NaoChegou  td.td-status{background:var(--st-naochegou-bg);color:var(--st-n
 tr.st-Aguardando td.td-status{background:var(--st-aguardando-bg);color:var(--st-aguardando-text)}
 tr.st-Bloqueada  td.td-status{background:var(--st-bloqueada-bg);color:var(--st-bloqueada-text)}
 
-.placa{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.placa{
+  font-family:'Barlow Condensed',sans-serif;font-weight:800;
+  font-size:12px;letter-spacing:.2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  display:block;
+}
 
 /* ── Selects dentro da tabela ───────────────────────────────────── */
 td select{
   border:1px solid var(--border);
-  border-radius:5px;
-  padding:2px 2px;font-size:10px;font-family:'Barlow',sans-serif;font-weight:600;
+  border-radius:4px;
+  padding:2px 1px;
+  font-size:10px;font-family:'Barlow',sans-serif;font-weight:600;
   cursor:pointer;
   background:var(--bg2);
   color:var(--text);
-  outline:none;width:100%;max-width:100%;transition:box-shadow .15s;
+  outline:none;
+  width:100%;max-width:100%;
+  display:block;
+  transition:box-shadow .15s;
   -webkit-appearance:auto;appearance:auto;
+  text-overflow:ellipsis;overflow:hidden;
 }
 td select:focus{box-shadow:0 0 0 2px var(--accent);outline:none}
 /* Select dentro da célula de status herda cor do status */
-td.td-status select{background:transparent;color:inherit;border-color:rgba(0,0,0,.2);font-weight:700}
+td.td-status select{
+  background:transparent;color:inherit;
+  border-color:rgba(0,0,0,.15);font-weight:700;
+  border-radius:6px;
+}
 #printArea{background:var(--bg);border-radius:0;padding:0}
 
 /* Subtle zebra striping since rows no longer carry status BG */
@@ -397,6 +429,7 @@ tbody tr:hover td{background:var(--bg4) !important}
       <div class="header-title">
         🚛 Monitoramento LH
         <small>SPA1 — Pátio em Tempo Real</small>
+        <span class="analyst"><span class="analyst-dot"></span>Analista: Ezequiel Miranda</span>
       </div>
     </div>
 
@@ -823,11 +856,29 @@ async function exportImg() {
     const area   = $("printArea")
     const scroll = area.querySelector(".table-scroll")
 
-    // Expand overflow so html2canvas captures all rows
+    // 1. Snapshot all select values and replace with styled spans
+    const selects = area.querySelectorAll("td select")
+    const originals = []
+    selects.forEach(sel => {
+      const val = sel.options[sel.selectedIndex]?.text || sel.value
+      const span = document.createElement("span")
+      span.textContent = val
+      span.style.cssText = `
+        display:block;width:100%;text-align:center;font-size:10px;
+        font-family:'Barlow',sans-serif;font-weight:700;
+        color:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+      `
+      originals.push({ sel, parent: sel.parentNode, next: sel.nextSibling, span })
+      sel.parentNode.replaceChild(span, sel)
+    })
+
+    // 2. Expand overflow so html2canvas sees all rows
     const prevO = scroll.style.overflow
     scroll.style.overflow = "visible"
 
-    const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#0f1117"
+    // 3. Resolve CSS variable for background
+    const cs  = getComputedStyle(document.documentElement)
+    const bg  = cs.getPropertyValue("--bg").trim() || "#0f1117"
 
     const canvas = await html2canvas(area, {
       scale: 2,
@@ -840,16 +891,32 @@ async function exportImg() {
       windowHeight: area.scrollHeight,
       width:  area.offsetWidth,
       height: area.scrollHeight,
-      logging: false
+      logging: false,
+      onclone: (doc) => {
+        // Ensure cloned table cells don't clip text
+        doc.querySelectorAll("td, th").forEach(el => {
+          el.style.overflow    = "hidden"
+          el.style.textOverflow= "ellipsis"
+          el.style.whiteSpace  = "nowrap"
+        })
+      }
     })
 
+    // 4. Restore selects
     scroll.style.overflow = prevO
+    originals.forEach(({ sel, parent, next, span }) => {
+      parent.replaceChild(sel, span)
+    })
 
     const a = document.createElement("a")
     a.download = "monitoramento_" + selectedDate + ".jpg"
     a.href = canvas.toDataURL("image/jpeg", .95)
     a.click()
-  } catch(e) { console.error(e); showToast("❌ Erro ao gerar imagem","err") }
+  } catch(e) {
+    console.error(e)
+    showToast("❌ Erro ao gerar imagem","err")
+    // Ensure selects are never lost on error — reload is the fallback
+  }
   done()
 }
 </script>
