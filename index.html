@@ -905,8 +905,8 @@ function placaHTML(placa, m, id) {
     text-align:center;">${typeOpts}</select>`
 
   let tag = ""
-  if (time && rtype === "MP")      tag = `<span class="reversa-tag mp">↩ REVERSA MP</span>`
-  if (time && rtype === "Pacotes") tag = `<span class="reversa-tag pkg">↩ REV. PACOTES</span>`
+  if (rtype === "MP")      tag = `<span class="reversa-tag mp">↩ REVERSA MP</span>`
+  if (rtype === "Pacotes") tag = `<span class="reversa-tag pkg">↩ REV. PACOTES</span>`
 
   return `<div class="placa-wrap">
     <span class="placa">${placa}</span>
