@@ -1,651 +1,784 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MONITORAMENTO LH - SPA1</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MONITORAMENTO LH — SPA1</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── CSS Variables ──────────────────────────────────────────────── */
+:root {
+  --accent:      #ff6600;
+  --accent-dark: #cc4400;
+  --accent-glow: rgba(255,102,0,.22);
 
-body {
-  font-family: 'Segoe UI', sans-serif;
-  background: #f0f2f5;
-  padding: 10px;
-  font-size: 14px;
-  color: #222;
-}
-
-.header {
-  background: linear-gradient(135deg, #ff6600, #cc3300);
-  color: white;
-  text-align: center;
-  padding: 15px 20px;
-  font-size: 22px;
-  font-weight: 800;
-  border-radius: 10px;
-  margin-bottom: 10px;
-  letter-spacing: 1px;
-  box-shadow: 0 4px 12px rgba(255,102,0,.35);
+  --st-concluida:#16a34a; --st-concluida-bg:#dcfce7; --st-concluida-text:#14532d;
+  --st-descarga: #ca8a04; --st-descarga-bg: #fef9c3; --st-descarga-text: #713f12;
+  --st-docada:   #b91c1c; --st-docada-bg:   #fee2e2; --st-docada-text:   #7f1d1d;
+  --st-fos:      #1d4ed8; --st-fos-bg:      #dbeafe; --st-fos-text:      #1e3a8a;
+  --st-naochegou:#ea580c; --st-naochegou-bg:#ffedd5; --st-naochegou-text:#7c2d12;
+  --st-aguardando:#6b7280;--st-aguardando-bg:#f3f4f6;--st-aguardando-text:#374151;
+  --st-bloqueada:#7c3aed; --st-bloqueada-bg: #ede9fe;--st-bloqueada-text:#4c1d95;
 }
 
-details.controls-accordion {
-  margin-bottom: 10px;
-}
-details.controls-accordion summary {
-  background: #333;
-  color: white;
-  padding: 10px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 14px;
-  list-style: none;
-  box-shadow: 0 1px 4px rgba(0,0,0,.1);
-  transition: background 0.2s;
-}
-details.controls-accordion summary:hover { background: #444; }
-details.controls-accordion summary::-webkit-details-marker { display: none; }
+[data-theme="dark"] {
+  --bg:     #0f1117;
+  --bg2:    #1a1d27;
+  --bg3:    #22263a;
+  --bg4:    #2a2f45;
+  --border: rgba(255,255,255,.08);
+  --text:   #e8eaf0;
+  --text2:  #9aa0b8;
+  --text3:  #6b7280;
+  --shadow: 0 2px 12px rgba(0,0,0,.4);
+  --shadow-lg:0 8px 32px rgba(0,0,0,.5);
+  --header-bg:linear-gradient(135deg,#ff6600 0%,#b83200 100%);
 
-.controls {
-  background: white;
-  border-radius: 8px;
-  padding: 10px 14px;
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  box-shadow: 0 1px 4px rgba(0,0,0,.08);
-}
-#fileInput { flex: 1; min-width: 160px; font-size: 13px; }
-
-.btn {
-  border: none;
-  padding: 8px 13px;
-  border-radius: 6px;
-  color: white;
-  font-weight: 700;
-  cursor: pointer;
-  font-size: 12px;
-  white-space: nowrap;
-  transition: filter .15s;
-}
-.btn:hover { filter: brightness(1.12); }
-.btn-upload { background: #0066cc; }
-.btn-print  { background: #28a745; }
-.btn-clear  { background: #dc3545; }
-
-#uploadStatus {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 5px;
-  background: #f0f0f0;
-  min-width: 80px;
+  --st-concluida-bg: #14532d; --st-concluida-text:#bbf7d0;
+  --st-descarga-bg:  #713f12; --st-descarga-text: #fef08a;
+  --st-docada-bg:    #7f1d1d; --st-docada-text:   #fecaca;
+  --st-fos-bg:       #1e3a8a; --st-fos-text:      #bfdbfe;
+  --st-naochegou-bg: #7c2d12; --st-naochegou-text:#fed7aa;
+  --st-aguardando-bg:#374151; --st-aguardando-text:#e5e7eb;
+  --st-bloqueada-bg: #4c1d95; --st-bloqueada-text:#ddd6fe;
 }
 
-.date-row {
-  background: white;
-  border-radius: 10px;
-  padding: 8px 14px;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+[data-theme="light"] {
+  --bg:     #f1f3f8;
+  --bg2:    #ffffff;
+  --bg3:    #f8f9fc;
+  --bg4:    #eef0f6;
+  --border: rgba(0,0,0,.08);
+  --text:   #1a1d27;
+  --text2:  #555b72;
+  --text3:  #9aa0b8;
+  --shadow: 0 2px 8px rgba(0,0,0,.08);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.12);
+  --header-bg:linear-gradient(135deg,#ff6600 0%,#cc3300 100%);
 }
-.date-row label { font-weight: 700; font-size: 13px; }
-#datePicker {
-  padding: 5px 8px;
-  border: 1.5px solid #ddd;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-}
-#dateInfo { font-size: 12px; color: #666; }
 
-.dashboard {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
+/* ── Reset ──────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Barlow',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  font-size:14px;
+  transition:background .3s,color .3s;
 }
-.card {
-  background: white;
-  padding: 12px 10px;
-  border-radius: 10px;
-  flex: 1;
-  min-width: 80px;
-  text-align: center;
-  font-size: 12px;
-  font-weight: 700;
-  box-shadow: 0 1px 4px rgba(0,0,0,.1);
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  color: #555;
-}
-.card span {
-  display: block;
-  font-size: 28px;
-  font-weight: 900;
-  color: #ff6600;
-  margin-top: 2px;
-}
-.card.card-concluida span { color: #1a6e35; }
-.card.card-descarga span  { color: #c9a000; }
-.card.card-naochegou span { color: #e07b00; }
 
-.table-wrap { overflow-x: auto; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
-table { width: 100%; border-collapse: collapse; background: white; min-width: 680px; }
+/* ── App wrapper ────────────────────────────────────────────────── */
+.app{max-width:1400px;margin:0 auto;padding:12px}
 
-thead th {
-  background: #ff6600;
-  color: white;
-  padding: 9px 8px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  white-space: nowrap;
-  position: sticky;
-  top: 0;
+/* ── Header ─────────────────────────────────────────────────────── */
+.header{
+  background:var(--header-bg);
+  color:#fff;
+  border-radius:14px;
+  padding:14px 18px;
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  box-shadow:0 4px 20px var(--accent-glow);
+  gap:10px;
 }
-tbody td {
-  padding: 6px 8px;
-  border-bottom: 1px solid #eee;
-  text-align: center;
-  font-size: 13px;
+.header-title{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:clamp(16px,4vw,26px);
+  font-weight:900;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  line-height:1.1;
 }
-tbody tr:last-child td { border-bottom: none; }
+.header-title small{font-weight:400;opacity:.75;font-size:.65em;display:block;letter-spacing:.5px}
+.header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 
-select {
-  padding: 3px 5px;
-  font-size: 12px;
-  border-radius: 4px;
-  border: 1px solid #bbb;
-  background: white;
-  cursor: pointer;
-  color: #222;
-  appearance: auto;
+/* ── Theme toggle ───────────────────────────────────────────────── */
+.theme-toggle{
+  background:rgba(255,255,255,.2);
+  border:1px solid rgba(255,255,255,.3);
+  color:#fff;
+  width:36px;height:36px;
+  border-radius:50%;
+  cursor:pointer;
+  font-size:17px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .2s,transform .2s;
+  flex-shrink:0;
 }
-.placa { font-weight: 800; color: #fff; letter-spacing: .5px; }
+.theme-toggle:hover{background:rgba(255,255,255,.35);transform:rotate(18deg)}
 
-.st-Concluida  { background: #1a6e35; color: #fff; }
-.st-Descarga   { background: #f5c800; color: #000; }
-.st-Docada     { background: #990000; color: #fff; }
-.st-Fos        { background: #1a5cb5; color: #fff; }
-.st-NaoChegou  { background: #e07b00; color: #fff; }
-.st-Aguardando { background: #444;    color: #fff; }
-.st-Bloqueada  { background: #4a2e7e; color: #fff; }
-
-.st-Concluida  select { background:#1a6e35; color:#fff; border-color:rgba(255,255,255,.4); }
-.st-Docada     select { background:#990000; color:#fff; border-color:rgba(255,255,255,.4); }
-.st-Fos        select { background:#1a5cb5; color:#fff; border-color:rgba(255,255,255,.4); }
-.st-NaoChegou  select { background:#e07b00; color:#fff; border-color:rgba(255,255,255,.4); }
-.st-Aguardando select { background:#444;    color:#fff; border-color:rgba(255,255,255,.4); }
-.st-Bloqueada  select { background:#4a2e7e; color:#fff; border-color:rgba(255,255,255,.4); }
-.st-Descarga   select { background:#f5c800; color:#000; border-color:rgba(0,0,0,.2); }
-
-#overlay {
-  display: none;
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,.5);
-  z-index: 999;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 14px;
-  color: white;
-  font-size: 17px;
-  font-weight: 700;
+/* ── Sync badge ─────────────────────────────────────────────────── */
+.sync-badge{
+  display:flex;align-items:center;gap:5px;
+  background:rgba(255,255,255,.15);
+  border-radius:20px;padding:4px 10px;
+  font-size:11px;font-weight:600;color:#fff;
+  white-space:nowrap;
 }
-#overlay.show { display: flex; }
-.spin {
-  width: 46px; height: 46px;
-  border: 5px solid rgba(255,255,255,.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: rot .75s linear infinite;
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:pg 2s infinite}
+.sync-dot.err{background:#f87171;animation:none}
+.sync-dot.loading{background:#fbbf24;animation:py 1s infinite}
+@keyframes pg{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes py{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ── KPI cards ──────────────────────────────────────────────────── */
+.dashboard{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  margin-bottom:12px;
 }
-@keyframes rot { to { transform: rotate(360deg); } }
-.empty-msg { padding: 24px; color: #999; font-size: 14px; }
+.card{
+  background:var(--bg2);
+  border-radius:12px;
+  padding:14px 10px;
+  text-align:center;
+  box-shadow:var(--shadow);
+  border:1px solid var(--border);
+  transition:transform .15s,box-shadow .15s;
+}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.card-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:4px}
+.card-value{font-family:'Barlow Condensed',sans-serif;font-size:clamp(26px,5vw,40px);font-weight:900;line-height:1}
+.card-total   .card-value{color:var(--accent)}
+.card-ok      .card-value{color:var(--st-concluida)}
+.card-desc    .card-value{color:var(--st-descarga)}
+.card-nc      .card-value{color:var(--st-naochegou)}
+
+/* ── Controls bar ───────────────────────────────────────────────── */
+.controls-bar{
+  background:var(--bg2);
+  border-radius:12px;
+  padding:10px 14px;
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+  box-shadow:var(--shadow);
+  border:1px solid var(--border);
+}
+.file-label{
+  display:flex;align-items:center;gap:6px;
+  background:var(--bg3);
+  border:1.5px dashed var(--border);
+  border-radius:8px;padding:7px 12px;
+  cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);
+  flex:1;min-width:150px;
+  transition:border-color .2s,color .2s;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.file-label:hover{border-color:var(--accent);color:var(--accent)}
+.file-label input{display:none}
+.date-group{
+  display:flex;align-items:center;gap:6px;
+  background:var(--bg3);border-radius:8px;padding:6px 10px;
+  border:1px solid var(--border);
+}
+.date-group label{font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap}
+#datePicker{
+  border:none;background:transparent;color:var(--text);
+  font-size:13px;font-family:'Barlow',sans-serif;font-weight:600;
+  cursor:pointer;outline:none;
+}
+.btn-group{display:flex;gap:6px;flex-wrap:wrap}
+.btn{
+  border:none;padding:8px 14px;border-radius:8px;
+  font-family:'Barlow',sans-serif;font-weight:700;font-size:12px;
+  cursor:pointer;white-space:nowrap;
+  transition:filter .15s,transform .1s;
+  display:flex;align-items:center;gap:5px;
+}
+.btn:hover{filter:brightness(1.1)}
+.btn:active{transform:scale(.97)}
+.btn-upload{background:var(--accent);color:#fff}
+.btn-print {background:#16a34a;color:#fff}
+.btn-clear {background:#dc2626;color:#fff}
+#uploadStatus{
+  font-size:11px;font-weight:600;padding:4px 8px;
+  border-radius:6px;background:var(--bg3);color:var(--text2);
+  border:1px solid var(--border);
+  white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;
+}
+
+/* ── Table ──────────────────────────────────────────────────────── */
+.table-wrap{
+  background:var(--bg2);border-radius:14px;
+  box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;
+}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;min-width:600px}
+thead th{
+  background:var(--accent);color:#fff;
+  padding:10px 8px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  white-space:nowrap;position:sticky;top:0;z-index:2;
+}
+tbody tr{transition:filter .1s}
+tbody tr:hover{filter:brightness(1.05)}
+tbody td{
+  padding:5px 6px;border-bottom:1px solid var(--border);
+  text-align:center;font-size:12px;color:var(--text);vertical-align:middle;
+}
+tbody tr:last-child td{border-bottom:none}
+
+/* ── Status colors ──────────────────────────────────────────────── */
+.st-Concluida  td{background:var(--st-concluida-bg) !important;color:var(--st-concluida-text) !important}
+.st-Descarga   td{background:var(--st-descarga-bg)  !important;color:var(--st-descarga-text)  !important}
+.st-Docada     td{background:var(--st-docada-bg)    !important;color:var(--st-docada-text)    !important}
+.st-Fos        td{background:var(--st-fos-bg)       !important;color:var(--st-fos-text)       !important}
+.st-NaoChegou  td{background:var(--st-naochegou-bg) !important;color:var(--st-naochegou-text) !important}
+.st-Aguardando td{background:var(--st-aguardando-bg)!important;color:var(--st-aguardando-text)!important}
+.st-Bloqueada  td{background:var(--st-bloqueada-bg) !important;color:var(--st-bloqueada-text) !important}
+
+.placa{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;letter-spacing:.5px}
+
+/* ── Selects ────────────────────────────────────────────────────── */
+td select{
+  border:1px solid rgba(0,0,0,.15);border-radius:6px;
+  padding:3px 4px;font-size:11px;font-family:'Barlow',sans-serif;font-weight:600;
+  cursor:pointer;background:rgba(255,255,255,.2);color:inherit;
+  outline:none;max-width:120px;width:100%;transition:box-shadow .15s;
+}
+td select:focus{box-shadow:0 0 0 2px rgba(255,255,255,.45)}
+
+/* ── Save flash ─────────────────────────────────────────────────── */
+@keyframes saved-flash{
+  0%  {outline:2px solid #4ade80;outline-offset:1px}
+  100%{outline:2px solid transparent}
+}
+.saved{animation:saved-flash .7s ease-out}
+
+/* ── Empty state ────────────────────────────────────────────────── */
+.empty-msg{padding:36px 20px;color:var(--text3);font-size:14px;text-align:center;line-height:2}
+.empty-msg strong{color:var(--text2)}
+
+/* ── Overlay ────────────────────────────────────────────────────── */
+#overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(4px);
+  z-index:999;align-items:center;justify-content:center;
+  flex-direction:column;gap:16px;color:#fff;font-size:16px;font-weight:700;
+}
+#overlay.show{display:flex}
+.spin{
+  width:48px;height:48px;
+  border:4px solid rgba(255,255,255,.2);
+  border-top-color:var(--accent);
+  border-radius:50%;animation:rot .7s linear infinite;
+}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* ── Toast ──────────────────────────────────────────────────────── */
+#toast{
+  position:fixed;bottom:20px;right:16px;
+  background:#1f2937;color:#fff;border-radius:10px;
+  padding:10px 16px;font-size:13px;font-weight:600;
+  box-shadow:0 4px 20px rgba(0,0,0,.4);
+  transform:translateY(80px);opacity:0;
+  transition:transform .3s,opacity .3s;
+  z-index:1000;max-width:280px;
+  display:flex;align-items:center;gap:8px;
+  border-left:4px solid var(--accent);
+}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.ok {border-color:#4ade80}
+#toast.err{border-color:#f87171}
+
+/* ── Responsive ─────────────────────────────────────────────────── */
+@media(max-width:640px){
+  .app{padding:8px}
+  .dashboard{grid-template-columns:repeat(2,1fr);gap:8px}
+  .controls-bar{flex-direction:column;align-items:stretch}
+  .file-label{justify-content:center}
+  .date-group{justify-content:center}
+  .btn-group{justify-content:center}
+  thead th{font-size:10px;padding:8px 4px}
+  tbody td{font-size:11px;padding:4px 3px}
+  td select{font-size:10px;max-width:85px}
+  .placa{font-size:13px}
+  .header-title small{display:none}
+}
+@media(max-width:380px){
+  .sync-badge{display:none}
+  .card-label{font-size:9px}
+}
 </style>
 </head>
 <body>
 
-<div id="overlay"><div class="spin"></div><span id="overlayMsg">Carregando...</span></div>
+<div id="overlay"><div class="spin"></div><span id="overlayMsg">Carregando…</span></div>
+<div id="toast"><span id="toastMsg">Salvo</span></div>
 
-<details class="controls-accordion" open>
-  <summary>⚙️ Atualização de Dados e Arquivos CSV/XLSX</summary>
-  <div class="controls">
-    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
-    <button id="btnUpload" class="btn btn-upload">⬆ Salvar na Nuvem</button>
-    <button id="btnPrint"  class="btn btn-print">🖨 Print JPG</button>
-    <button id="btnClear"  class="btn btn-clear">🗑 Limpar Tudo</button>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-title">
+      🚛 Monitoramento LH
+      <small>SPA1 — Pátio em Tempo Real</small>
+    </div>
+    <div class="header-right">
+      <div class="sync-badge">
+        <div class="sync-dot" id="syncDot"></div>
+        <span id="syncLabel">Online</span>
+      </div>
+      <button class="theme-toggle" id="btnTheme" title="Alternar tema">🌙</button>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="dashboard">
+    <div class="card card-total">
+      <div class="card-label">Total</div>
+      <div class="card-value" id="kpiTotal">0</div>
+    </div>
+    <div class="card card-ok">
+      <div class="card-label">Concluídas</div>
+      <div class="card-value" id="kpiConcluida">0</div>
+    </div>
+    <div class="card card-desc">
+      <div class="card-label">Descarga Iniciada</div>
+      <div class="card-value" id="kpiDescarga">0</div>
+    </div>
+    <div class="card card-nc">
+      <div class="card-label">Não Chegou</div>
+      <div class="card-value" id="kpiNaoChegou">0</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls-bar">
+    <label class="file-label">
+      📂 <span id="fileName">Selecionar CSV / XLSX…</span>
+      <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+    </label>
+
+    <div class="date-group">
+      <label>📅</label>
+      <input type="date" id="datePicker">
+    </div>
+
+    <div class="btn-group">
+      <button id="btnUpload" class="btn btn-upload">⬆ Enviar</button>
+      <button id="btnPrint"  class="btn btn-print">📸 JPG</button>
+      <button id="btnClear"  class="btn btn-clear">🗑</button>
+    </div>
+
     <span id="uploadStatus">—</span>
   </div>
-</details>
 
-<div id="printArea">
-  <div class="header">🚛 MONITORAMENTO LH — SPA1</div>
-
-  <div class="date-row">
-    <label>📅 Data de referência:</label>
-    <input type="date" id="datePicker">
-    <span id="dateInfo"></span>
-  </div>
-
-  <div class="dashboard">
-    <div class="card">Total<span id="kpiTotal">0</span></div>
-    <div class="card card-concluida">Concluídas<span id="kpiConcluida">0</span></div>
-    <div class="card card-descarga">Descarga Iniciada<span id="kpiDescarga">0</span></div>
-    <div class="card card-naochegou">Não Chegou<span id="kpiNaoChegou">0</span></div>
-  </div>
-
+  <!-- Table -->
   <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>#</th><th>DOCA</th><th>REVERSA</th><th>PLACA</th>
-          <th>YMS IN</th><th>YMS OUT</th><th>PACOTES</th>
-          <th>STATUS</th><th>PERFIL</th>
-        </tr>
-      </thead>
-      <tbody id="tbody">
-        <tr><td colspan="9" class="empty-msg">Carregando dados do Firebase…</td></tr>
-      </tbody>
-    </table>
+    <div class="table-scroll" id="printArea">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>DOCA</th><th>REVERSA</th><th>PLACA</th>
+            <th>YMS IN</th><th>YMS OUT</th><th>PACOTES</th>
+            <th>STATUS</th><th>PERFIL</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="9" class="empty-msg">Carregando dados…</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
-</div>
 
-<script type="module">
-// ── Firebase Realtime Database (REST) ──────────────────────────────────────
-// URL base do Realtime Database
-const RTDB_URL = "https://monitoramento-rotas-spa1-default-rtdb.firebaseio.com"
+</div><!-- .app -->
 
-// ── estado global ──────────────────────────────────────────────────────────
+<script>
+// ── Config ──────────────────────────────────────────────────────────
+const RTDB         = "https://monitoramento-rotas-spa1-default-rtdb.firebaseio.com"
+const CHUNK        = 200
+const POLL_MS      = 10000
+
+// ── State ────────────────────────────────────────────────────────────
 let allRows = [], filtered = [], manualMap = {}
-let selectedDate = todayStr()
-let realtimeInterval = null
+let selectedDate    = todayStr()
+let pollTimer       = null
+let toastTimer      = null
+let lastManualHash  = ""
 
+// ── DOM ──────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id)
 
-// ── listeners de UI ────────────────────────────────────────────────────────
-$("btnUpload").addEventListener("click",   handleUpload)
-$("btnPrint").addEventListener("click",    exportImg)
-$("btnClear").addEventListener("click",    clearAll)
-$("datePicker").addEventListener("change", applyFilter)
-$("tbody").addEventListener("change", e => {
-  const { id, field } = e.target.dataset
-  if (id && field) updateRTDB(id, field, e.target.value)
+// ── Theme ────────────────────────────────────────────────────────────
+const saved = localStorage.getItem("lh-theme") || "dark"
+document.documentElement.setAttribute("data-theme", saved)
+$("btnTheme").textContent = saved === "dark" ? "☀️" : "🌙"
+
+$("btnTheme").addEventListener("click", () => {
+  const t = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"
+  document.documentElement.setAttribute("data-theme", t)
+  $("btnTheme").textContent = t === "dark" ? "☀️" : "🌙"
+  localStorage.setItem("lh-theme", t)
 })
 
+// ── Event listeners ──────────────────────────────────────────────────
 $("datePicker").value = selectedDate
-updateDateInfo()
+$("btnUpload").addEventListener("click",   handleUpload)
+$("btnPrint").addEventListener ("click",   exportImg)
+$("btnClear").addEventListener ("click",   clearAll)
+$("datePicker").addEventListener("change", applyFilter)
 
-// ── inicialização ──────────────────────────────────────────────────────────
-try {
-  loading("Carregando dados…")
-  await loadCloudCSV()
-  await loadManual()
-  applyFilter()
-  done()
-  startRealtime()
-} catch(e) {
-  done()
-  setStatus("Erro Firebase: " + e.message, "red")
-  console.error(e)
-}
+// File chosen → show table IMMEDIATELY, then optionally cloud upload
+$("fileInput").addEventListener("change", e => {
+  const f = e.target.files[0]
+  if (!f) return
+  $("fileName").textContent = f.name
+  const name = f.name.toLowerCase()
+  if (name.endsWith(".xlsx") || name.endsWith(".xls")) readXLSX(f, false)
+  else readCSV(f, false)
+})
 
-// ── helpers de data ────────────────────────────────────────────────────────
+// Table select changes → save to cloud instantly
+$("tbody").addEventListener("change", async e => {
+  const { id, field } = e.target.dataset
+  if (!id || !field) return
+  const val = e.target.value
+
+  if (!manualMap[id]) manualMap[id] = { doca:"-", reversa:"Não", status_patio:"Aguardando Doca", perfil:"Granel" }
+  manualMap[id][field] = val
+  render()
+
+  // Flash green on row
+  const row = e.target.closest("tr")
+  if (row) { row.classList.remove("saved"); void row.offsetWidth; row.classList.add("saved") }
+
+  // Save to cloud
+  setSyncStatus("loading", "Salvando…")
+  try {
+    await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, {
+      route_id: id, [field]: val, updated_at: new Date().toISOString()
+    })
+    setSyncStatus("ok", "Online")
+    showToast("✅ Salvo na nuvem", "ok")
+  } catch(err) {
+    setSyncStatus("err", "Erro")
+    showToast("❌ Erro ao salvar", "err")
+    console.error(err)
+  }
+})
+
+// ── Bootstrap ────────────────────────────────────────────────────────
+;(async () => {
+  try {
+    loading("Carregando dados da nuvem…")
+    await loadCloudCSV()
+    await loadManual()
+    applyFilter()
+    done()
+    startPolling()
+    setSyncStatus("ok", "Online")
+  } catch(e) {
+    done()
+    setSyncStatus("err", "Offline")
+    setStatus("⚠ " + e.message, "#f87171")
+    console.error(e)
+  }
+})()
+
+// ── Utilities ────────────────────────────────────────────────────────
 function todayStr() {
   const d = new Date()
-  return [d.getFullYear(), String(d.getMonth()+1).padStart(2,"0"), String(d.getDate()).padStart(2,"0")].join("-")
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`
 }
-
-function loading(msg) { $("overlayMsg").textContent = msg || "Carregando…"; $("overlay").classList.add("show") }
+function loading(msg) { $("overlayMsg").textContent = msg||"Carregando…"; $("overlay").classList.add("show") }
 function done()       { $("overlay").classList.remove("show") }
-function setStatus(msg, color) { $("uploadStatus").textContent = msg; $("uploadStatus").style.color = color||"#444" }
-function updateDateInfo() {
-  $("dateInfo").textContent = $("datePicker").value === todayStr() ? "📌 Hoje" : "📆 " + $("datePicker").value
+function setStatus(msg, color) { $("uploadStatus").textContent = msg; $("uploadStatus").style.color = color||"" }
+function v(obj, key)  { const r = obj[key]; return r == null ? "" : String(r).trim() }
+function encodeKey(id){ return String(id).replace(/[.#$[\]/]/g,"_") }
+function hhmm(dt) {
+  const s = String(dt||""), m = s.match(/(\d{2}:\d{2})/)
+  return m ? m[1] : "—"
 }
-function v(obj, key) { const r = obj[key]; return (r == null) ? "" : String(r).trim() }
-
+function setSyncStatus(state, label) {
+  const d = $("syncDot")
+  d.className = "sync-dot" + (state==="err"?" err":state==="loading"?" loading":"")
+  $("syncLabel").textContent = label
+}
+function showToast(msg, type="") {
+  const t = $("toast")
+  $("toastMsg").textContent = msg
+  t.className = "show " + type
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { t.className = "" }, 2600)
+}
 function normalizeDate(raw) {
   if (!raw && raw !== 0) return ""
   const s = String(raw).trim()
   if (!s || s === "nan") return ""
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.replace("T", " ")
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.replace("T"," ")
   const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[T\s]+(\d{1,2}:\d{2}))?/)
   if (dmy) {
-    const [, d, m, y, t] = dmy
-    return `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}` + (t ? " " + t + ":00" : " 00:00:00")
+    const [,d,m,y,t] = dmy
+    return `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}` + (t ? " "+t+":00" : " 00:00:00")
   }
-  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}:\d{2}))?/)
-  if (mdy) {
-    const [, m, d, y, t] = mdy
-    return `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}` + (t ? " " + t + ":00" : " 00:00:00")
-  }
-  if (/^\d+(\.\d+)?$/.test(s)) {
-    const date = XLSX.SSF.parse_date_code(parseFloat(s))
-    if (date) {
-      return `${date.y}-${String(date.m).padStart(2,"0")}-${String(date.d).padStart(2,"0")} ` +
-             `${String(date.H).padStart(2,"0")}:${String(date.M).padStart(2,"0")}:00`
-    }
+  if (/^\d+(\.\d+)?$/.test(s) && typeof XLSX!=="undefined") {
+    try {
+      const dt = XLSX.SSF.parse_date_code(parseFloat(s))
+      if (dt) return `${dt.y}-${String(dt.m).padStart(2,"0")}-${String(dt.d).padStart(2,"0")} ${String(dt.H).padStart(2,"0")}:${String(dt.M).padStart(2,"0")}:00`
+    } catch(e) {}
   }
   return s
 }
 
-// ── upload / leitura de arquivo ────────────────────────────────────────────
-function handleUpload() {
-  const file = $("fileInput").files[0]
-  if (!file) { setStatus("⚠ Selecione um arquivo.", "orange"); return }
-  const name = file.name.toLowerCase()
-  if (name.endsWith(".xlsx") || name.endsWith(".xls")) readXLSX(file)
-  else readCSV(file)
+// ── RTDB REST ────────────────────────────────────────────────────────
+async function rtdbGet(path) {
+  const r = await fetch(`${RTDB}/${path}.json`)
+  if (!r.ok) throw new Error(`RTDB GET ${path}: HTTP ${r.status}`)
+  return r.json()
+}
+async function rtdbPut(path, data) {
+  const r = await fetch(`${RTDB}/${path}.json`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)})
+  if (!r.ok) throw new Error(`RTDB PUT: HTTP ${r.status}`)
+  return r.json()
+}
+async function rtdbPatch(path, data) {
+  const r = await fetch(`${RTDB}/${path}.json`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)})
+  if (!r.ok) throw new Error(`RTDB PATCH: HTTP ${r.status}`)
+  return r.json()
+}
+async function rtdbDelete(path) {
+  const r = await fetch(`${RTDB}/${path}.json`,{method:"DELETE"})
+  if (!r.ok) throw new Error(`RTDB DELETE: HTTP ${r.status}`)
 }
 
-function readXLSX(file) {
+// ── File upload ──────────────────────────────────────────────────────
+function handleUpload() {
+  const file = $("fileInput").files[0]
+  if (!file) { showToast("⚠ Selecione um arquivo primeiro","err"); return }
+  const name = file.name.toLowerCase()
+  if (name.endsWith(".xlsx")||name.endsWith(".xls")) readXLSX(file, true)
+  else readCSV(file, true)
+}
+
+function readXLSX(file, saveCloud) {
   loading("Lendo XLSX…")
   const reader = new FileReader()
   reader.onload = e => {
     try {
-      const wb   = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: false })
+      const wb   = XLSX.read(new Uint8Array(e.target.result),{type:"array",cellDates:false})
       const ws   = wb.Sheets[wb.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json(ws, { raw: true, defval: "" })
-      const dateCols = ["Destino ETA","Destino ATA","Destino ATD","Origem ETA","Origem ATA","Origem ATD"]
-      for (const row of rows) {
-        for (const col of dateCols) {
-          if (row[col] !== "") row[col] = normalizeDate(row[col])
-        }
-      }
-      saveAndProcess(rows)
-    } catch(err) { done(); setStatus("Erro XLSX: " + err.message, "red"); console.error(err) }
+      const rows = XLSX.utils.sheet_to_json(ws,{raw:true,defval:""})
+      const cols = ["Destino ETA","Destino ATA","Destino ATD","Origem ETA","Origem ATA","Origem ATD"]
+      for (const row of rows) for (const c of cols) if (row[c]!=="") row[c]=normalizeDate(row[c])
+      processAndMaybeUpload(rows, saveCloud)
+    } catch(err){ done(); showToast("❌ Erro XLSX: "+err.message,"err"); console.error(err) }
   }
   reader.readAsArrayBuffer(file)
 }
 
-function readCSV(file) {
+function readCSV(file, saveCloud) {
   loading("Lendo CSV…")
-  Papa.parse(file, {
-    header: true, skipEmptyLines: true,
+  Papa.parse(file,{
+    header:true, skipEmptyLines:true,
     transformHeader: h => (h||"").replace(/^\uFEFF/,"").trim(),
-    complete: r => saveAndProcess(r.data),
-    error: e => { done(); setStatus("Erro CSV: " + e.message, "red") }
+    complete: r => processAndMaybeUpload(r.data, saveCloud),
+    error: e => { done(); showToast("❌ Erro CSV: "+e.message,"err") }
   })
 }
 
-// ── Firebase Realtime Database (REST API) ──────────────────────────────────
-async function rtdbGet(path) {
-  const res = await fetch(`${RTDB_URL}/${path}.json`)
-  if (!res.ok) throw new Error(`RTDB GET ${path}: ${res.status}`)
-  return res.json()
-}
-
-async function rtdbPut(path, data) {
-  const res = await fetch(`${RTDB_URL}/${path}.json`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  })
-  if (!res.ok) throw new Error(`RTDB PUT ${path}: ${res.status}`)
-  return res.json()
-}
-
-async function rtdbPatch(path, data) {
-  const res = await fetch(`${RTDB_URL}/${path}.json`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  })
-  if (!res.ok) throw new Error(`RTDB PATCH ${path}: ${res.status}`)
-  return res.json()
-}
-
-async function rtdbDelete(path) {
-  const res = await fetch(`${RTDB_URL}/${path}.json`, { method: "DELETE" })
-  if (!res.ok) throw new Error(`RTDB DELETE ${path}: ${res.status}`)
-}
-
-// ── salvar CSV em nuvem (RTDB) ─────────────────────────────────────────────
-const CHUNK_SIZE = 200
-async function saveAndProcess(rows) {
+async function processAndMaybeUpload(rows, saveCloud) {
   allRows = rows
-  loading("Salvando no Firebase…")
+  // ✅ Show table IMMEDIATELY — no waiting for cloud
+  applyFilter()
+  done()
+  setStatus(`📊 ${rows.length} linhas lidas.`, "#4ade80")
+
+  if (!saveCloud) return
+
+  // Upload to cloud in background
+  loading("Salvando na nuvem…")
+  setSyncStatus("loading","Enviando…")
   try {
-    // apaga chunks antigos
     await rtdbDelete("lh_csv_cache")
-    // salva em chunks
     const chunks = {}
-    for (let i = 0; i * CHUNK_SIZE < rows.length; i++) {
-      const key = "chunk_" + String(i).padStart(3,"0")
-      chunks[key] = {
+    for (let i = 0; i * CHUNK < rows.length; i++) {
+      chunks["chunk_"+String(i).padStart(3,"0")] = {
         chunk: i,
-        data: JSON.stringify(rows.slice(i * CHUNK_SIZE, (i+1) * CHUNK_SIZE)),
+        data: JSON.stringify(rows.slice(i*CHUNK,(i+1)*CHUNK)),
         updated_at: new Date().toISOString()
       }
     }
     await rtdbPut("lh_csv_cache", chunks)
-    setStatus("✅ " + rows.length + " linhas salvas!", "green")
-  } catch(e) { console.error(e); setStatus("⚠ Erro: " + e.message, "red") }
-  applyFilter()
+    setStatus(`✅ ${rows.length} linhas na nuvem!`, "#4ade80")
+    setSyncStatus("ok","Online")
+    showToast(`✅ ${rows.length} rotas enviadas!`,"ok")
+  } catch(e) {
+    console.error(e)
+    setSyncStatus("err","Erro")
+    showToast("❌ Erro ao enviar: "+e.message,"err")
+  }
   done()
 }
 
 async function loadCloudCSV() {
-  try {
-    const data = await rtdbGet("lh_csv_cache")
-    if (!data) { setStatus("Sem dados. Faça upload do arquivo.", "#888"); return }
-    let combined = []
-    const keys = Object.keys(data).sort()
-    for (const k of keys) {
-      combined = combined.concat(JSON.parse(data[k].data || "[]"))
-    }
-    allRows = combined
-    setStatus("☁ " + allRows.length + " linhas carregadas.", "#0066cc")
-  } catch(e) { console.error(e); setStatus("Erro ao carregar: " + e.message, "red"); throw e }
-}
-
-// ── dados manuais (RTDB) ───────────────────────────────────────────────────
-async function updateRTDB(id, field, value) {
-  try {
-    await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, {
-      [field]: value,
-      updated_at: new Date().toISOString()
-    })
-  } catch(e) { console.error("Erro ao salvar:", e) }
+  const data = await rtdbGet("lh_csv_cache")
+  if (!data) { setStatus("Sem dados. Envie um arquivo.","#9aa0b8"); return }
+  let combined = []
+  for (const k of Object.keys(data).sort())
+    combined = combined.concat(JSON.parse(data[k].data||"[]"))
+  allRows = combined
+  setStatus(`☁ ${allRows.length} linhas carregadas.`, "#60a5fa")
 }
 
 async function loadManual() {
-  try {
-    const data = await rtdbGet("lh_monitoramento")
-    manualMap = {}
-    if (data) {
-      for (const [k, v] of Object.entries(data)) {
-        manualMap[v.route_id || k] = v
-      }
-    }
-  } catch(e) { console.error(e); throw e }
+  const data = await rtdbGet("lh_monitoramento")
+  manualMap = {}
+  if (data) for (const [k,val] of Object.entries(data)) manualMap[val.route_id||k] = val
+  lastManualHash = JSON.stringify(manualMap)
 }
 
-// Firebase não aceita '/', '.', '#', '$', '[', ']' em chaves
-function encodeKey(id) { return String(id).replace(/[.#$[\]/]/g, "_") }
-
-// ── polling para simular realtime ─────────────────────────────────────────
-function startRealtime() {
-  if (realtimeInterval) clearInterval(realtimeInterval)
-  realtimeInterval = setInterval(async () => {
+// ── Polling ──────────────────────────────────────────────────────────
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer)
+  pollTimer = setInterval(async () => {
     try {
       const data = await rtdbGet("lh_monitoramento")
-      const newMap = {}
-      if (data) {
-        for (const [k, v] of Object.entries(data)) {
-          newMap[v.route_id || k] = v
-        }
-      }
-      manualMap = newMap
-      render()
-    } catch(e) { console.error("Polling error:", e) }
-  }, 10000) // a cada 10s
+      const nm = {}
+      if (data) for (const [k,val] of Object.entries(data)) nm[val.route_id||k] = val
+      const h = JSON.stringify(nm)
+      if (h !== lastManualHash) { manualMap = nm; lastManualHash = h; render() }
+      setSyncStatus("ok","Online")
+    } catch(e) { setSyncStatus("err","Offline"); console.warn("Poll:",e) }
+  }, POLL_MS)
 }
 
-// ── filtro e processamento ─────────────────────────────────────────────────
+// ── Filter / process ─────────────────────────────────────────────────
 function applyFilter() {
   selectedDate = $("datePicker").value
-  updateDateInfo()
   processData(allRows)
 }
 
 /**
- * Critérios espelhando a fórmula:
- *   =SEERRO(SORT(FILTER(
- *     {L:L \ Z:Z \ AA:AA \ AK:AK};   → Veículo de carga 1, Destino ATA, Destino ATD, Pacotes
- *     X:X = "SPA1"                   → Destino = SPA1
- *     * INT(Y:Y) = HOJE()            → INT(Destino ETA) = data selecionada
- *     * E:E <> "RODOPENHA"           → Motorista <> RODOPENHA
- *     * L:L <> ""                    → Veículo de carga 1 não vazio
- *   ); 2; VERDADEIRO);"")
- *   Ordem: coluna 2 (Destino ATA) crescente
+ * =SEERRO(SORT(FILTER(
+ *   {L \ Z \ AA \ AK};          Placa, DestinoATA, DestinoATD, Pacotes
+ *   X="SPA1" *                  Destino
+ *   INT(Y)=HOJE() *             INT(Destino ETA) = data ref
+ *   E<>"RODOPENHA" *            Motorista
+ *   L<>""                       Placa não vazia
+ * );2;VERDADEIRO);"")           Ordena por Z (ATA) ASC
  */
 function processData(rows) {
-  if (!rows?.length) { filtered = []; render(); return }
+  if (!rows?.length) { filtered=[]; render(); return }
   filtered = []
   for (const src of rows) {
-    // Col L – Veículo de carga 1 (placa)
-    const placa     = v(src, "Veículo de carga 1") || v(src, "Veículo de carga 2")
-    // Col X – Destino
-    const destino   = v(src, "Destino").toUpperCase()
-    // Col Y – Destino ETA (INT = só a data)
-    const etaRaw    = normalizeDate(v(src, "Destino ETA"))
-    const etaDate   = etaRaw.substring(0, 10)            // INT(ETA) = data
-    // Col E – Motorista
-    const motorista = v(src, "Motorista").toUpperCase()
-    // Col Z – Destino ATA (ymsIn)
-    const ymsIn     = normalizeDate(v(src, "Destino ATA"))
-    // Col AA – Destino ATD (ymsOut)
-    const ymsOut    = normalizeDate(v(src, "Destino ATD"))
-    // Col AK – Pacotes
-    const pacotes   = v(src, "Pacotes")
-    // Route ID
-    const id        = v(src, "Route ID")
+    const placa     = v(src,"Veículo de carga 1")||v(src,"Veículo de carga 2")
+    const destino   = v(src,"Destino").toUpperCase()
+    const etaDate   = normalizeDate(v(src,"Destino ETA")).substring(0,10)
+    const motorista = v(src,"Motorista").toUpperCase()
+    const ymsIn     = normalizeDate(v(src,"Destino ATA"))
+    const ymsOut    = normalizeDate(v(src,"Destino ATD"))
+    const pacotes   = v(src,"Pacotes")
+    const id        = v(src,"Route ID")
 
-    // ── filtros da fórmula ──
-    if (destino !== "SPA1")                              continue  // X = "SPA1"
-    if (etaDate !== selectedDate)                        continue  // INT(Y) = data selecionada
-    if (motorista.includes("RODOPENHA"))                 continue  // E <> "RODOPENHA"
-    if (!placa || placa.toLowerCase().includes("sem placa")) continue  // L <> ""
+    if (destino !== "SPA1")                                  continue
+    if (etaDate !== selectedDate)                            continue
+    if (motorista.includes("RODOPENHA"))                     continue
+    if (!placa||placa.toLowerCase().includes("sem placa"))   continue
 
-    filtered.push({ id, placa, etaDate, ymsIn, ymsOut, pacotes })
+    filtered.push({ id, placa, ymsIn, ymsOut, pacotes })
   }
 
-  // Ordenar por Destino ATA crescente (col 2 da fórmula); vazios por último
-  filtered.sort((a, b) => {
-    const aEmpty = !a.ymsIn || a.ymsIn.trim() === ""
-    const bEmpty = !b.ymsIn || b.ymsIn.trim() === ""
-    if (aEmpty && bEmpty) return 0
-    if (aEmpty) return 1
-    if (bEmpty) return -1
+  filtered.sort((a,b) => {
+    const ae = !a.ymsIn||!a.ymsIn.trim(), be = !b.ymsIn||!b.ymsIn.trim()
+    if (ae&&be) return 0
+    if (ae) return 1; if (be) return -1
     return a.ymsIn.localeCompare(b.ymsIn)
   })
   render()
 }
 
-// ── constantes de opções ───────────────────────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────────
 const DOCAS    = ["-","D1","D2","D3","D4","D5","D6","D7","D8","D9","D10"]
 const STATUSES = ["Aguardando Doca","Concluída","Descarga iniciada","Docada","Fos","Não Chegou","Bloqueada"]
 const PERFIS   = ["Granel","Paletizada"]
 const REVERSAS = ["Não","Sim"]
 const CLS_MAP  = {
-  "Concluída":        "st-Concluida",
-  "Descarga iniciada":"st-Descarga",
-  "Docada":           "st-Docada",
-  "Fos":              "st-Fos",
-  "Não Chegou":       "st-NaoChegou",
-  "Aguardando Doca":  "st-Aguardando",
-  "Bloqueada":        "st-Bloqueada"
+  "Concluída":"st-Concluida","Descarga iniciada":"st-Descarga",
+  "Docada":"st-Docada","Fos":"st-Fos","Não Chegou":"st-NaoChegou",
+  "Aguardando Doca":"st-Aguardando","Bloqueada":"st-Bloqueada"
 }
 
 function mkSel(opts, cur, id, field) {
   return `<select data-id="${id}" data-field="${field}">${
-    opts.map(o => `<option${o===cur?" selected":""}>${o}</option>`).join("")
+    opts.map(o=>`<option${o===cur?" selected":""}>${o}</option>`).join("")
   }</select>`
 }
-function hhmm(dt) { return String(dt).substring(11,16) || "—" }
 
-// ── renderização ───────────────────────────────────────────────────────────
+// ── Render ───────────────────────────────────────────────────────────
 function render() {
-  let html = "", concluidas = 0, descarga = 0, naoChegou = 0
-
-  for (let i = 0; i < filtered.length; i++) {
+  let html="", concluidas=0, descarga=0, naoChegou=0
+  for (let i=0; i<filtered.length; i++) {
     const row = filtered[i]
     const id  = row.id
-    const m   = manualMap[id] || { doca:"-", reversa:"Não", status_patio:"Aguardando Doca", perfil:"Granel" }
-    const cls = CLS_MAP[m.status_patio] || "st-Aguardando"
-
-    if (m.status_patio === "Concluída")         concluidas++
-    if (m.status_patio === "Descarga iniciada") descarga++
-    if (m.status_patio === "Não Chegou")        naoChegou++
-
-    html += `
-<tr class="${cls}">
-  <td>${i+1}</td>
+    const m   = manualMap[id]||{doca:"-",reversa:"Não",status_patio:"Aguardando Doca",perfil:"Granel"}
+    const cls = CLS_MAP[m.status_patio]||"st-Aguardando"
+    if (m.status_patio==="Concluída")         concluidas++
+    if (m.status_patio==="Descarga iniciada") descarga++
+    if (m.status_patio==="Não Chegou")        naoChegou++
+    html += `<tr class="${cls}">
+  <td><b>${i+1}</b></td>
   <td>${mkSel(DOCAS,    m.doca,         id,"doca")}</td>
   <td>${mkSel(REVERSAS, m.reversa,      id,"reversa")}</td>
   <td class="placa">${row.placa}</td>
   <td>${hhmm(row.ymsIn)}</td>
   <td>${hhmm(row.ymsOut)}</td>
-  <td>${row.pacotes}</td>
-  <td>${mkSel(STATUSES, m.status_patio, id,"status_patio")}</td>
-  <td>${mkSel(PERFIS,   m.perfil,       id,"perfil")}</td>
+  <td>${row.pacotes||"—"}</td>
+  <td>${mkSel(STATUSES,m.status_patio,  id,"status_patio")}</td>
+  <td>${mkSel(PERFIS,  m.perfil,        id,"perfil")}</td>
 </tr>`
   }
-
   if (!html) html = `<tr><td colspan="9" class="empty-msg">
-    Nenhum registro com destino SPA1 em <strong>${selectedDate}</strong>.<br>
-    Verifique a data selecionada ou faça upload de um arquivo atualizado.</td></tr>`
+    Nenhum registro SPA1 em <strong>${selectedDate}</strong><br>
+    <small>Verifique a data ou envie um arquivo atualizado.</small></td></tr>`
 
-  $("tbody").innerHTML         = html
-  $("kpiTotal").textContent    = filtered.length
-  $("kpiConcluida").textContent= concluidas
-  $("kpiDescarga").textContent = descarga
-  $("kpiNaoChegou").textContent= naoChegou
+  $("tbody").innerHTML          = html
+  $("kpiTotal").textContent     = filtered.length
+  $("kpiConcluida").textContent = concluidas
+  $("kpiDescarga").textContent  = descarga
+  $("kpiNaoChegou").textContent = naoChegou
 }
 
-// ── limpar tudo ────────────────────────────────────────────────────────────
+// ── Clear all ────────────────────────────────────────────────────────
 async function clearAll() {
-  if (!confirm("Apagar CSV e dados manuais do Firebase?\nEssa ação não pode ser desfeita.")) return
+  if (!confirm("Apagar TODOS os dados do Firebase?\nEssa ação não pode ser desfeita.")) return
   loading("Apagando…")
   try {
     await rtdbDelete("lh_csv_cache")
     await rtdbDelete("lh_monitoramento")
-    allRows = []; filtered = []; manualMap = {}
-    render(); setStatus("🗑 Dados apagados.", "red")
-  } catch(e) { setStatus("Erro ao apagar: " + e.message, "red"); console.error(e) }
+    allRows=[]; filtered=[]; manualMap={}
+    render(); setStatus("🗑 Dados apagados.","#f87171")
+    showToast("🗑 Dados apagados.","err")
+  } catch(e) { showToast("❌ "+e.message,"err"); console.error(e) }
   done()
 }
 
-// ── exportar imagem ────────────────────────────────────────────────────────
+// ── Export JPG ───────────────────────────────────────────────────────
 async function exportImg() {
   loading("Gerando imagem…")
-  const area = document.getElementById("printArea")
-  const canvas = await html2canvas(area, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: "#f0f2f5",
-    scrollX: 0,
-    scrollY: -window.scrollY,
-    windowWidth: area.scrollWidth,
-    width: area.scrollWidth,
-    height: area.scrollHeight
+  const area = $("printArea")
+  const bg   = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim()||"#0f1117"
+  const canvas = await html2canvas(area,{
+    scale:2, useCORS:true, backgroundColor:bg,
+    scrollX:0, scrollY:-window.scrollY,
+    windowWidth:area.scrollWidth, width:area.scrollWidth, height:area.scrollHeight
   })
   const a = document.createElement("a")
-  a.download = "monitoramento_" + selectedDate + ".jpg"
-  a.href = canvas.toDataURL("image/jpeg", 0.95)
+  a.download = "monitoramento_"+selectedDate+".jpg"
+  a.href = canvas.toDataURL("image/jpeg",.95)
   a.click(); done()
 }
 </script>
