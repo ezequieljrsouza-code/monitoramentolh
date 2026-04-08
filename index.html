@@ -214,20 +214,36 @@ body{
   background:var(--bg2);border-radius:14px;
   box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;
 }
-.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-table{width:100%;border-collapse:collapse;min-width:600px}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%}
+table{
+  width:100%;border-collapse:collapse;
+  table-layout:fixed; /* ← colunas respeitam widths definidos */
+}
+/* Larguras das 9 colunas: #, DOCA, REV, PLACA, IN, OUT, PKG, STATUS, PERFIL */
+col.c-num    {width:4%}
+col.c-doca   {width:10%}
+col.c-rev    {width:8%}
+col.c-placa  {width:12%}
+col.c-in     {width:8%}
+col.c-out    {width:8%}
+col.c-pkg    {width:8%}
+col.c-status {width:26%}
+col.c-perfil {width:16%}
+
 thead th{
   background:var(--accent);color:#fff;
-  padding:10px 8px;
+  padding:8px 4px;
   font-family:'Barlow Condensed',sans-serif;
-  font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
-  white-space:nowrap;position:sticky;top:0;z-index:2;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  position:sticky;top:0;z-index:2;
 }
 tbody tr{transition:filter .1s}
 tbody tr:hover{filter:brightness(1.05)}
 tbody td{
-  padding:5px 6px;border-bottom:1px solid var(--border);
+  padding:5px 4px;border-bottom:1px solid var(--border);
   text-align:center;font-size:12px;color:var(--text);vertical-align:middle;
+  overflow:hidden;
 }
 tbody tr:last-child td{border-bottom:none}
 
@@ -240,14 +256,15 @@ tbody tr:last-child td{border-bottom:none}
 .st-Aguardando td{background:var(--st-aguardando-bg)!important;color:var(--st-aguardando-text)!important}
 .st-Bloqueada  td{background:var(--st-bloqueada-bg) !important;color:var(--st-bloqueada-text) !important}
 
-.placa{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;letter-spacing:.5px}
+.placa{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ── Selects ────────────────────────────────────────────────────── */
 td select{
-  border:1px solid rgba(0,0,0,.15);border-radius:6px;
-  padding:3px 4px;font-size:11px;font-family:'Barlow',sans-serif;font-weight:600;
+  border:1px solid rgba(0,0,0,.15);border-radius:5px;
+  padding:2px 2px;font-size:10px;font-family:'Barlow',sans-serif;font-weight:600;
   cursor:pointer;background:rgba(255,255,255,.2);color:inherit;
-  outline:none;max-width:120px;width:100%;transition:box-shadow .15s;
+  outline:none;width:100%;max-width:100%;transition:box-shadow .15s;
+  -webkit-appearance:auto;appearance:auto;
 }
 td select:focus{box-shadow:0 0 0 2px rgba(255,255,255,.45)}
 
@@ -296,17 +313,18 @@ td select:focus{box-shadow:0 0 0 2px rgba(255,255,255,.45)}
 
 /* ── Responsive ─────────────────────────────────────────────────── */
 @media(max-width:640px){
-  .app{padding:8px}
+  .app{padding:6px}
   .dashboard{grid-template-columns:repeat(2,1fr);gap:8px}
   .controls-bar{flex-direction:column;align-items:stretch}
   .file-label{justify-content:center}
   .date-group{justify-content:center}
   .btn-group{justify-content:center}
-  thead th{font-size:10px;padding:8px 4px}
-  tbody td{font-size:11px;padding:4px 3px}
-  td select{font-size:10px;max-width:85px}
-  .placa{font-size:13px}
   .header-title small{display:none}
+  /* table: deixa table-layout:fixed trabalhar — sem overrides de fonte aqui */
+  thead th{font-size:9px;padding:7px 2px;letter-spacing:0}
+  tbody td{font-size:10px;padding:4px 2px}
+  td select{font-size:9px;padding:1px 1px}
+  .placa{font-size:11px}
 }
 @media(max-width:380px){
   .sync-badge{display:none}
@@ -381,6 +399,11 @@ td select:focus{box-shadow:0 0 0 2px rgba(255,255,255,.45)}
   <div class="table-wrap">
     <div class="table-scroll" id="printArea">
       <table>
+        <colgroup>
+          <col class="c-num"><col class="c-doca"><col class="c-rev">
+          <col class="c-placa"><col class="c-in"><col class="c-out">
+          <col class="c-pkg"><col class="c-status"><col class="c-perfil">
+        </colgroup>
         <thead>
           <tr>
             <th>#</th><th>DOCA</th><th>REVERSA</th><th>PLACA</th>
@@ -769,17 +792,40 @@ async function clearAll() {
 // ── Export JPG ───────────────────────────────────────────────────────
 async function exportImg() {
   loading("Gerando imagem…")
-  const area = $("printArea")
-  const bg   = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim()||"#0f1117"
-  const canvas = await html2canvas(area,{
-    scale:2, useCORS:true, backgroundColor:bg,
-    scrollX:0, scrollY:-window.scrollY,
-    windowWidth:area.scrollWidth, width:area.scrollWidth, height:area.scrollHeight
-  })
-  const a = document.createElement("a")
-  a.download = "monitoramento_"+selectedDate+".jpg"
-  a.href = canvas.toDataURL("image/jpeg",.95)
-  a.click(); done()
+  try {
+    const wrap   = $("table-wrap-id")   // printed area = just the table wrapper
+    const app    = document.querySelector(".app")
+    const bg     = getComputedStyle(document.documentElement).getPropertyValue("--bg2").trim() || "#1a1d27"
+
+    // Temporarily make table-scroll overflow visible so html2canvas captures all rows
+    const scroll = document.querySelector(".table-scroll")
+    const prevOverflow = scroll.style.overflow
+    scroll.style.overflow = "visible"
+    app.style.overflow    = "visible"
+
+    const canvas = await html2canvas(app, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#0f1117",
+      scrollX: -window.scrollX,
+      scrollY: -window.scrollY,
+      windowWidth:  app.offsetWidth,
+      windowHeight: app.scrollHeight,
+      width:  app.offsetWidth,
+      height: app.scrollHeight,
+      logging: false
+    })
+
+    scroll.style.overflow = prevOverflow
+    app.style.overflow    = ""
+
+    const a = document.createElement("a")
+    a.download = "monitoramento_" + selectedDate + ".jpg"
+    a.href = canvas.toDataURL("image/jpeg", .95)
+    a.click()
+  } catch(e) { console.error(e); showToast("❌ Erro ao gerar imagem","err") }
+  done()
 }
 </script>
 </body>
