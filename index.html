@@ -33,7 +33,6 @@ body {
   box-shadow: 0 4px 12px rgba(255,102,0,.35);
 }
 
-/* Área retrátil para os controles manterem a tela limpa */
 details.controls-accordion {
   margin-bottom: 10px;
 }
@@ -49,12 +48,8 @@ details.controls-accordion summary {
   box-shadow: 0 1px 4px rgba(0,0,0,.1);
   transition: background 0.2s;
 }
-details.controls-accordion summary:hover {
-  background: #444;
-}
-details.controls-accordion summary::-webkit-details-marker {
-  display: none;
-}
+details.controls-accordion summary:hover { background: #444; }
+details.controls-accordion summary::-webkit-details-marker { display: none; }
 
 .controls {
   background: white;
@@ -142,6 +137,9 @@ details.controls-accordion summary::-webkit-details-marker {
   color: #ff6600;
   margin-top: 2px;
 }
+.card.card-concluida span { color: #1a6e35; }
+.card.card-descarga span  { color: #c9a000; }
+.card.card-naochegou span { color: #e07b00; }
 
 .table-wrap { overflow-x: auto; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
 table { width: 100%; border-collapse: collapse; background: white; min-width: 680px; }
@@ -177,7 +175,6 @@ select {
 }
 .placa { font-weight: 800; color: #fff; letter-spacing: .5px; }
 
-/* Cores de status bem definidas para hierarquia visual */
 .st-Concluida  { background: #1a6e35; color: #fff; }
 .st-Descarga   { background: #f5c800; color: #000; }
 .st-Docada     { background: #990000; color: #fff; }
@@ -245,9 +242,9 @@ select {
 
   <div class="dashboard">
     <div class="card">Total<span id="kpiTotal">0</span></div>
-    <div class="card">Concluídas<span id="kpiConcluida">0</span></div>
-    <div class="card">Docadas<span id="kpiDocada">0</span></div>
-    <div class="card">Bloqueadas<span id="kpiBloqueada">0</span></div>
+    <div class="card card-concluida">Concluídas<span id="kpiConcluida">0</span></div>
+    <div class="card card-descarga">Descarga Iniciada<span id="kpiDescarga">0</span></div>
+    <div class="card card-naochegou">Não Chegou<span id="kpiNaoChegou">0</span></div>
   </div>
 
   <div class="table-wrap">
@@ -267,63 +264,52 @@ select {
 </div>
 
 <script type="module">
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js"
-import {
-  getFirestore, collection, doc, setDoc,
-  getDocs, onSnapshot, orderBy, query, writeBatch
-} from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js"
+// ── Firebase Realtime Database (REST) ──────────────────────────────────────
+// URL base do Realtime Database
+const RTDB_URL = "https://monitoramento-rotas-spa1-default-rtdb.firebaseio.com"
 
-let db = null, unsubManual = null, unsubCSV = null
+// ── estado global ──────────────────────────────────────────────────────────
 let allRows = [], filtered = [], manualMap = {}
 let selectedDate = todayStr()
+let realtimeInterval = null
 
 const $ = id => document.getElementById(id)
 
+// ── listeners de UI ────────────────────────────────────────────────────────
 $("btnUpload").addEventListener("click",   handleUpload)
 $("btnPrint").addEventListener("click",    exportImg)
 $("btnClear").addEventListener("click",    clearAll)
 $("datePicker").addEventListener("change", applyFilter)
 $("tbody").addEventListener("change", e => {
   const { id, field } = e.target.dataset
-  if (id && field) updateDB(id, field, e.target.value)
+  if (id && field) updateRTDB(id, field, e.target.value)
 })
 
 $("datePicker").value = selectedDate
 updateDateInfo()
 
+// ── inicialização ──────────────────────────────────────────────────────────
 try {
-  initDB()
   loading("Carregando dados…")
-  await loadCloudCSV()   
-  await loadManual()     
-  applyFilter()          
-  done()                 
-  startRealtime()        
+  await loadCloudCSV()
+  await loadManual()
+  applyFilter()
+  done()
+  startRealtime()
 } catch(e) {
-  done(); setStatus("Erro Firebase: Configuração pendente.", "red"); console.error(e)
+  done()
+  setStatus("Erro Firebase: " + e.message, "red")
+  console.error(e)
 }
 
-function initDB() {
-  // 🔴 SUBSTITUA ESTAS INFORMAÇÕES PELAS DO SEU PROJETO FIREBASE 🔴
-  const cfg = {
-    apiKey:        "AIzaSyDgrBR-FcSf5TPAK2bzxHg9vG7OJIJz2po",
-    authDomain:    "monitoramento-rotas-spa1.firebaseapp.com",
-    projectId:     "monitoramento-rotas-spa1",
-    storageBucket: "monitoramento-rotas-spa1.firebasestorage.app",
-    messagingSenderId: "563867670719",
-    appId:         "1:563867670719:web:7f61b6f9b21aa3d23dce0a"
-    measurementId: "G-8EHM7SMWVP"
-  }
-  const app = getApps().length ? getApps()[0] : initializeApp(cfg)
-  db = getFirestore(app)
-}
-
+// ── helpers de data ────────────────────────────────────────────────────────
 function todayStr() {
   const d = new Date()
   return [d.getFullYear(), String(d.getMonth()+1).padStart(2,"0"), String(d.getDate()).padStart(2,"0")].join("-")
 }
+
 function loading(msg) { $("overlayMsg").textContent = msg || "Carregando…"; $("overlay").classList.add("show") }
-function done() { $("overlay").classList.remove("show") }
+function done()       { $("overlay").classList.remove("show") }
 function setStatus(msg, color) { $("uploadStatus").textContent = msg; $("uploadStatus").style.color = color||"#444" }
 function updateDateInfo() {
   $("dateInfo").textContent = $("datePicker").value === todayStr() ? "📌 Hoje" : "📆 " + $("datePicker").value
@@ -355,8 +341,8 @@ function normalizeDate(raw) {
   return s
 }
 
+// ── upload / leitura de arquivo ────────────────────────────────────────────
 function handleUpload() {
-  if (!db) { alert("Configure o Firebase primeiro."); return }
   const file = $("fileInput").files[0]
   if (!file) { setStatus("⚠ Selecione um arquivo.", "orange"); return }
   const name = file.name.toLowerCase()
@@ -394,23 +380,57 @@ function readCSV(file) {
   })
 }
 
+// ── Firebase Realtime Database (REST API) ──────────────────────────────────
+async function rtdbGet(path) {
+  const res = await fetch(`${RTDB_URL}/${path}.json`)
+  if (!res.ok) throw new Error(`RTDB GET ${path}: ${res.status}`)
+  return res.json()
+}
+
+async function rtdbPut(path, data) {
+  const res = await fetch(`${RTDB_URL}/${path}.json`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  })
+  if (!res.ok) throw new Error(`RTDB PUT ${path}: ${res.status}`)
+  return res.json()
+}
+
+async function rtdbPatch(path, data) {
+  const res = await fetch(`${RTDB_URL}/${path}.json`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  })
+  if (!res.ok) throw new Error(`RTDB PATCH ${path}: ${res.status}`)
+  return res.json()
+}
+
+async function rtdbDelete(path) {
+  const res = await fetch(`${RTDB_URL}/${path}.json`, { method: "DELETE" })
+  if (!res.ok) throw new Error(`RTDB DELETE ${path}: ${res.status}`)
+}
+
+// ── salvar CSV em nuvem (RTDB) ─────────────────────────────────────────────
 const CHUNK_SIZE = 200
 async function saveAndProcess(rows) {
   allRows = rows
   loading("Salvando no Firebase…")
   try {
-    const col = collection(db, "lh_csv_cache")
-    const old = await getDocs(col)
-    if (!old.empty) {
-      const b = writeBatch(db); old.forEach(d => b.delete(d.ref)); await b.commit()
-    }
+    // apaga chunks antigos
+    await rtdbDelete("lh_csv_cache")
+    // salva em chunks
+    const chunks = {}
     for (let i = 0; i * CHUNK_SIZE < rows.length; i++) {
-      await setDoc(doc(col, "chunk_" + String(i).padStart(3,"0")), {
+      const key = "chunk_" + String(i).padStart(3,"0")
+      chunks[key] = {
         chunk: i,
         data: JSON.stringify(rows.slice(i * CHUNK_SIZE, (i+1) * CHUNK_SIZE)),
         updated_at: new Date().toISOString()
-      })
+      }
     }
+    await rtdbPut("lh_csv_cache", chunks)
     setStatus("✅ " + rows.length + " linhas salvas!", "green")
   } catch(e) { console.error(e); setStatus("⚠ Erro: " + e.message, "red") }
   applyFilter()
@@ -419,41 +439,111 @@ async function saveAndProcess(rows) {
 
 async function loadCloudCSV() {
   try {
-    const snap = await getDocs(query(collection(db, "lh_csv_cache"), orderBy("chunk")))
-    if (snap.empty) { setStatus("Sem dados. Faça upload do arquivo.", "#888"); return }
+    const data = await rtdbGet("lh_csv_cache")
+    if (!data) { setStatus("Sem dados. Faça upload do arquivo.", "#888"); return }
     let combined = []
-    snap.forEach(d => { combined = combined.concat(JSON.parse(d.data().data || "[]")) })
+    const keys = Object.keys(data).sort()
+    for (const k of keys) {
+      combined = combined.concat(JSON.parse(data[k].data || "[]"))
+    }
     allRows = combined
     setStatus("☁ " + allRows.length + " linhas carregadas.", "#0066cc")
   } catch(e) { console.error(e); setStatus("Erro ao carregar: " + e.message, "red"); throw e }
 }
 
+// ── dados manuais (RTDB) ───────────────────────────────────────────────────
+async function updateRTDB(id, field, value) {
+  try {
+    await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, {
+      [field]: value,
+      updated_at: new Date().toISOString()
+    })
+  } catch(e) { console.error("Erro ao salvar:", e) }
+}
+
+async function loadManual() {
+  try {
+    const data = await rtdbGet("lh_monitoramento")
+    manualMap = {}
+    if (data) {
+      for (const [k, v] of Object.entries(data)) {
+        manualMap[v.route_id || k] = v
+      }
+    }
+  } catch(e) { console.error(e); throw e }
+}
+
+// Firebase não aceita '/', '.', '#', '$', '[', ']' em chaves
+function encodeKey(id) { return String(id).replace(/[.#$[\]/]/g, "_") }
+
+// ── polling para simular realtime ─────────────────────────────────────────
+function startRealtime() {
+  if (realtimeInterval) clearInterval(realtimeInterval)
+  realtimeInterval = setInterval(async () => {
+    try {
+      const data = await rtdbGet("lh_monitoramento")
+      const newMap = {}
+      if (data) {
+        for (const [k, v] of Object.entries(data)) {
+          newMap[v.route_id || k] = v
+        }
+      }
+      manualMap = newMap
+      render()
+    } catch(e) { console.error("Polling error:", e) }
+  }, 10000) // a cada 10s
+}
+
+// ── filtro e processamento ─────────────────────────────────────────────────
 function applyFilter() {
   selectedDate = $("datePicker").value
   updateDateInfo()
   processData(allRows)
 }
 
+/**
+ * Critérios espelhando a fórmula:
+ *   =SEERRO(SORT(FILTER(
+ *     {L:L \ Z:Z \ AA:AA \ AK:AK};   → Veículo de carga 1, Destino ATA, Destino ATD, Pacotes
+ *     X:X = "SPA1"                   → Destino = SPA1
+ *     * INT(Y:Y) = HOJE()            → INT(Destino ETA) = data selecionada
+ *     * E:E <> "RODOPENHA"           → Motorista <> RODOPENHA
+ *     * L:L <> ""                    → Veículo de carga 1 não vazio
+ *   ); 2; VERDADEIRO);"")
+ *   Ordem: coluna 2 (Destino ATA) crescente
+ */
 function processData(rows) {
   if (!rows?.length) { filtered = []; render(); return }
   filtered = []
   for (const src of rows) {
-    const id        = v(src, "Route ID")
-    const motorista = v(src, "Motorista").toUpperCase()
-    const destino   = v(src, "Destino").toUpperCase()
+    // Col L – Veículo de carga 1 (placa)
     const placa     = v(src, "Veículo de carga 1") || v(src, "Veículo de carga 2")
-    const dataRef   = normalizeDate(v(src, "Destino ETA"))
+    // Col X – Destino
+    const destino   = v(src, "Destino").toUpperCase()
+    // Col Y – Destino ETA (INT = só a data)
+    const etaRaw    = normalizeDate(v(src, "Destino ETA"))
+    const etaDate   = etaRaw.substring(0, 10)            // INT(ETA) = data
+    // Col E – Motorista
+    const motorista = v(src, "Motorista").toUpperCase()
+    // Col Z – Destino ATA (ymsIn)
     const ymsIn     = normalizeDate(v(src, "Destino ATA"))
+    // Col AA – Destino ATD (ymsOut)
     const ymsOut    = normalizeDate(v(src, "Destino ATD"))
+    // Col AK – Pacotes
     const pacotes   = v(src, "Pacotes")
+    // Route ID
+    const id        = v(src, "Route ID")
 
-    if (!destino.includes("SPA1"))                           continue
-    if (!placa || placa.toLowerCase().includes("sem placa")) continue
-    if (motorista.includes("RODOPENHA"))                     continue
-    if (dataRef.substring(0, 10) !== selectedDate)           continue
+    // ── filtros da fórmula ──
+    if (destino !== "SPA1")                              continue  // X = "SPA1"
+    if (etaDate !== selectedDate)                        continue  // INT(Y) = data selecionada
+    if (motorista.includes("RODOPENHA"))                 continue  // E <> "RODOPENHA"
+    if (!placa || placa.toLowerCase().includes("sem placa")) continue  // L <> ""
 
-    filtered.push({ id, placa, dataRef, ymsIn, ymsOut, pacotes })
+    filtered.push({ id, placa, etaDate, ymsIn, ymsOut, pacotes })
   }
+
+  // Ordenar por Destino ATA crescente (col 2 da fórmula); vazios por último
   filtered.sort((a, b) => {
     const aEmpty = !a.ymsIn || a.ymsIn.trim() === ""
     const bEmpty = !b.ymsIn || b.ymsIn.trim() === ""
@@ -465,14 +555,19 @@ function processData(rows) {
   render()
 }
 
+// ── constantes de opções ───────────────────────────────────────────────────
 const DOCAS    = ["-","D1","D2","D3","D4","D5","D6","D7","D8","D9","D10"]
 const STATUSES = ["Aguardando Doca","Concluída","Descarga iniciada","Docada","Fos","Não Chegou","Bloqueada"]
 const PERFIS   = ["Granel","Paletizada"]
 const REVERSAS = ["Não","Sim"]
 const CLS_MAP  = {
-  "Concluída":"st-Concluida","Descarga iniciada":"st-Descarga",
-  "Docada":"st-Docada","Fos":"st-Fos","Não Chegou":"st-NaoChegou",
-  "Aguardando Doca":"st-Aguardando","Bloqueada":"st-Bloqueada"
+  "Concluída":        "st-Concluida",
+  "Descarga iniciada":"st-Descarga",
+  "Docada":           "st-Docada",
+  "Fos":              "st-Fos",
+  "Não Chegou":       "st-NaoChegou",
+  "Aguardando Doca":  "st-Aguardando",
+  "Bloqueada":        "st-Bloqueada"
 }
 
 function mkSel(opts, cur, id, field) {
@@ -482,16 +577,20 @@ function mkSel(opts, cur, id, field) {
 }
 function hhmm(dt) { return String(dt).substring(11,16) || "—" }
 
+// ── renderização ───────────────────────────────────────────────────────────
 function render() {
-  let html = "", concluidas = 0, docadas = 0, bloqueadas = 0
+  let html = "", concluidas = 0, descarga = 0, naoChegou = 0
+
   for (let i = 0; i < filtered.length; i++) {
     const row = filtered[i]
     const id  = row.id
     const m   = manualMap[id] || { doca:"-", reversa:"Não", status_patio:"Aguardando Doca", perfil:"Granel" }
     const cls = CLS_MAP[m.status_patio] || "st-Aguardando"
-    if (m.status_patio === "Concluída") concluidas++
-    if (m.status_patio === "Docada")    docadas++
-    if (m.status_patio === "Bloqueada") bloqueadas++
+
+    if (m.status_patio === "Concluída")         concluidas++
+    if (m.status_patio === "Descarga iniciada") descarga++
+    if (m.status_patio === "Não Chegou")        naoChegou++
+
     html += `
 <tr class="${cls}">
   <td>${i+1}</td>
@@ -505,115 +604,50 @@ function render() {
   <td>${mkSel(PERFIS,   m.perfil,       id,"perfil")}</td>
 </tr>`
   }
+
   if (!html) html = `<tr><td colspan="9" class="empty-msg">
     Nenhum registro com destino SPA1 em <strong>${selectedDate}</strong>.<br>
     Verifique a data selecionada ou faça upload de um arquivo atualizado.</td></tr>`
 
-  $("tbody").innerHTML          = html
-  $("kpiTotal").textContent     = filtered.length
-  $("kpiConcluida").textContent = concluidas
-  $("kpiDocada").textContent    = docadas
-  $("kpiBloqueada").textContent = bloqueadas
+  $("tbody").innerHTML         = html
+  $("kpiTotal").textContent    = filtered.length
+  $("kpiConcluida").textContent= concluidas
+  $("kpiDescarga").textContent = descarga
+  $("kpiNaoChegou").textContent= naoChegou
 }
 
-async function updateDB(id, field, value) {
-  if (!db) return
-  await setDoc(doc(db, "lh_monitoramento", id),
-    { [field]: value, updated_at: new Date().toISOString() }, { merge: true })
-}
-
-async function loadManual() {
-  try {
-    const snap = await getDocs(collection(db, "lh_monitoramento"))
-    manualMap = {}
-    snap.forEach(d => { manualMap[d.id] = { id: d.id, ...d.data() } })
-  } catch(e) { console.error(e); throw e }
-}
-
-function startRealtime() {
-  if (unsubManual) unsubManual()
-  unsubManual = onSnapshot(
-    collection(db, "lh_monitoramento"),
-    snap => {
-      snap.docChanges().forEach(ch => {
-        if (ch.type === "removed") delete manualMap[ch.doc.id]
-        else manualMap[ch.doc.id] = { id: ch.doc.id, ...ch.doc.data() }
-      })
-      render()
-    },
-    err => console.error("Realtime manual:", err)
-  )
-
-  if (unsubCSV) unsubCSV()
-  let csvFirstLoad = true
-  unsubCSV = onSnapshot(
-    query(collection(db, "lh_csv_cache"), orderBy("chunk")),
-    snap => {
-      if (csvFirstLoad) { csvFirstLoad = false; return }
-      if (snap.empty) return
-      const hasChange = snap.docChanges().some(ch => ch.type === "added" || ch.type === "removed")
-      if (!hasChange) return
-      let combined = []
-      snap.forEach(d => { combined = combined.concat(JSON.parse(d.data().data || "[]")) })
-      allRows = combined
-      setStatus("☁ Arquivo atualizado: " + allRows.length + " linhas.", "#0066cc")
-      processData(allRows)
-    },
-    err => console.error("Realtime CSV:", err)
-  )
-}
-
+// ── limpar tudo ────────────────────────────────────────────────────────────
 async function clearAll() {
-  if (!db) return
   if (!confirm("Apagar CSV e dados manuais do Firebase?\nEssa ação não pode ser desfeita.")) return
   loading("Apagando…")
-  for (const name of ["lh_csv_cache","lh_monitoramento"]) {
-    const snap = await getDocs(collection(db, name))
-    if (!snap.empty) { const b = writeBatch(db); snap.forEach(d => b.delete(d.ref)); await b.commit() }
-  }
-  allRows = []; filtered = []; manualMap = {}
-  render(); setStatus("🗑 Dados apagados.", "red"); done()
+  try {
+    await rtdbDelete("lh_csv_cache")
+    await rtdbDelete("lh_monitoramento")
+    allRows = []; filtered = []; manualMap = {}
+    render(); setStatus("🗑 Dados apagados.", "red")
+  } catch(e) { setStatus("Erro ao apagar: " + e.message, "red"); console.error(e) }
+  done()
 }
-// ... (resto do código anterior) ...
 
-// --- NOVA FUNÇÃO DE EXPORTAÇÃO AJUSTADA ---
+// ── exportar imagem ────────────────────────────────────────────────────────
 async function exportImg() {
-  loading("Gerando imagem de alta qualidade…")
+  loading("Gerando imagem…")
   const area = document.getElementById("printArea")
-  
-  // Opções para garantir alta qualidade e captura total sem cortes
-  const options = {
-    scale: 3,                 // Aumenta a resolução para alta qualidade (pode ser 2, 3 ou 4)
-    useCORS: true,           // Ajuda com fontes externas se houver
-    backgroundColor: "#f0f2f5", // Mantém o fundo padrão do painel
-    removeContainer: true,   // Remove bordas extras do contêiner
-    
-    // Força a captura da largura total do conteúdo da tabela
+  const canvas = await html2canvas(area, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: "#f0f2f5",
+    scrollX: 0,
+    scrollY: -window.scrollY,
     windowWidth: area.scrollWidth,
     width: area.scrollWidth,
-    
-    // Garante que a altura capture tudo, ignorando a rolagem da janela
-    windowHeight: area.scrollHeight,
-    height: area.scrollHeight,
-    scrollY: -window.scrollY  // Corrige o deslocamento da rolagem vertical
-  }
-
-  try {
-    const canvas = await html2canvas(area, options)
-    const a = document.createElement("a")
-    a.download = "monitoramento_alta_resolucao_" + selectedDate + ".jpg"
-    
-    // Define a qualidade máxima para o arquivo JPEG (0.95 a 1.0)
-    a.href = canvas.toDataURL("image/jpeg", 1.0)
-    a.click()
-    done()
-    setStatus("✅ Print gerado com sucesso!", "green")
-  } catch (error) {
-    console.error("Erro ao gerar print:", error)
-    done()
-    setStatus("❌ Erro ao gerar o print.", "red")
-  }
-  }
+    height: area.scrollHeight
+  })
+  const a = document.createElement("a")
+  a.download = "monitoramento_" + selectedDate + ".jpg"
+  a.href = canvas.toDataURL("image/jpeg", 0.95)
+  a.click(); done()
+}
 </script>
 </body>
 </html>
