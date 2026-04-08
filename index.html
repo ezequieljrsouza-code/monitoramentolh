@@ -72,22 +72,27 @@ body{
   font-size:14px;
   transition:background .3s,color .3s;
 }
+/* Smooth theme transition on all key elements */
+.topbar,.card,.table-wrap,.sync-badge,.theme-toggle,
+#uploadStatus,.file-label,.date-group,#datePicker,
+tbody td,td select,#toast{
+  transition:background .3s,color .3s,border-color .3s,box-shadow .3s;
+}
 
 /* ── App wrapper ────────────────────────────────────────────────── */
 .app{max-width:1400px;margin:0 auto;padding:12px}
 
-/* ── Header ─────────────────────────────────────────────────────── */
+/* ── Header (dentro do print) ───────────────────────────────────── */
 .header{
   background:var(--header-bg);
   color:#fff;
   border-radius:14px;
   padding:14px 18px;
-  margin-bottom:12px;
+  margin-bottom:10px;
   display:flex;
   align-items:center;
-  justify-content:space-between;
+  justify-content:center;
   box-shadow:0 4px 20px var(--accent-glow);
-  gap:10px;
 }
 .header-title{
   font-family:'Barlow Condensed',sans-serif;
@@ -96,15 +101,15 @@ body{
   letter-spacing:1.5px;
   text-transform:uppercase;
   line-height:1.1;
+  text-align:center;
 }
 .header-title small{font-weight:400;opacity:.75;font-size:.65em;display:block;letter-spacing:.5px}
-.header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 
 /* ── Theme toggle ───────────────────────────────────────────────── */
 .theme-toggle{
-  background:rgba(255,255,255,.2);
-  border:1px solid rgba(255,255,255,.3);
-  color:#fff;
+  background:var(--bg4);
+  border:1px solid var(--border);
+  color:var(--text);
   width:36px;height:36px;
   border-radius:50%;
   cursor:pointer;
@@ -113,14 +118,15 @@ body{
   transition:background .2s,transform .2s;
   flex-shrink:0;
 }
-.theme-toggle:hover{background:rgba(255,255,255,.35);transform:rotate(18deg)}
+.theme-toggle:hover{background:var(--bg3);transform:rotate(18deg)}
 
 /* ── Sync badge ─────────────────────────────────────────────────── */
 .sync-badge{
   display:flex;align-items:center;gap:5px;
-  background:rgba(255,255,255,.15);
+  background:var(--bg3);
+  border:1px solid var(--border);
   border-radius:20px;padding:4px 10px;
-  font-size:11px;font-weight:600;color:#fff;
+  font-size:11px;font-weight:600;color:var(--text2);
   white-space:nowrap;
 }
 .sync-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:pg 2s infinite}
@@ -153,12 +159,12 @@ body{
 .card-desc    .card-value{color:var(--st-descarga)}
 .card-nc      .card-value{color:var(--st-naochegou)}
 
-/* ── Controls bar ───────────────────────────────────────────────── */
-.controls-bar{
+/* ── Top bar (controles — fora do print) ────────────────────────── */
+.topbar{
   background:var(--bg2);
   border-radius:12px;
-  padding:10px 14px;
-  margin-bottom:12px;
+  padding:8px 12px;
+  margin-bottom:10px;
   display:flex;
   align-items:center;
   flex-wrap:wrap;
@@ -166,6 +172,7 @@ body{
   box-shadow:var(--shadow);
   border:1px solid var(--border);
 }
+.topbar-right{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
 .file-label{
   display:flex;align-items:center;gap:6px;
   background:var(--bg3);
@@ -247,28 +254,41 @@ tbody td{
 }
 tbody tr:last-child td{border-bottom:none}
 
-/* ── Status colors ──────────────────────────────────────────────── */
-.st-Concluida  td{background:var(--st-concluida-bg) !important;color:var(--st-concluida-text) !important}
-.st-Descarga   td{background:var(--st-descarga-bg)  !important;color:var(--st-descarga-text)  !important}
-.st-Docada     td{background:var(--st-docada-bg)    !important;color:var(--st-docada-text)    !important}
-.st-Fos        td{background:var(--st-fos-bg)       !important;color:var(--st-fos-text)       !important}
-.st-NaoChegou  td{background:var(--st-naochegou-bg) !important;color:var(--st-naochegou-text) !important}
-.st-Aguardando td{background:var(--st-aguardando-bg)!important;color:var(--st-aguardando-text)!important}
-.st-Bloqueada  td{background:var(--st-bloqueada-bg) !important;color:var(--st-bloqueada-text) !important}
+/* ── Status: cor SOMENTE na celula td.td-status ─────────────────── */
+tbody td{font-weight:700;color:var(--text)}
+
+td.td-status{border-radius:6px;padding:4px 6px;font-weight:800;white-space:nowrap}
+
+tr.st-Concluida  td.td-status{background:var(--st-concluida-bg);color:var(--st-concluida-text)}
+tr.st-Descarga   td.td-status{background:var(--st-descarga-bg); color:var(--st-descarga-text)}
+tr.st-Docada     td.td-status{background:var(--st-docada-bg);   color:var(--st-docada-text)}
+tr.st-Fos        td.td-status{background:var(--st-fos-bg);      color:var(--st-fos-text)}
+tr.st-NaoChegou  td.td-status{background:var(--st-naochegou-bg);color:var(--st-naochegou-text)}
+tr.st-Aguardando td.td-status{background:var(--st-aguardando-bg);color:var(--st-aguardando-text)}
+tr.st-Bloqueada  td.td-status{background:var(--st-bloqueada-bg);color:var(--st-bloqueada-text)}
 
 .placa{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* ── Selects ────────────────────────────────────────────────────── */
+/* ── Selects dentro da tabela ───────────────────────────────────── */
 td select{
-  border:1px solid rgba(0,0,0,.15);border-radius:5px;
+  border:1px solid var(--border);
+  border-radius:5px;
   padding:2px 2px;font-size:10px;font-family:'Barlow',sans-serif;font-weight:600;
-  cursor:pointer;background:rgba(255,255,255,.2);color:inherit;
+  cursor:pointer;
+  background:var(--bg2);
+  color:var(--text);
   outline:none;width:100%;max-width:100%;transition:box-shadow .15s;
   -webkit-appearance:auto;appearance:auto;
 }
-td select:focus{box-shadow:0 0 0 2px rgba(255,255,255,.45)}
+td select:focus{box-shadow:0 0 0 2px var(--accent);outline:none}
+/* Select dentro da célula de status herda cor do status */
+td.td-status select{background:transparent;color:inherit;border-color:rgba(0,0,0,.2);font-weight:700}
+#printArea{background:var(--bg);border-radius:0;padding:0}
 
-/* ── Save flash ─────────────────────────────────────────────────── */
+/* Subtle zebra striping since rows no longer carry status BG */
+tbody tr:nth-child(even) td{background:var(--bg3)}
+tbody tr:nth-child(odd)  td{background:var(--bg2)}
+tbody tr:hover td{background:var(--bg4) !important}
 @keyframes saved-flash{
   0%  {outline:2px solid #4ade80;outline-offset:1px}
   100%{outline:2px solid transparent}
@@ -298,29 +318,30 @@ td select:focus{box-shadow:0 0 0 2px rgba(255,255,255,.45)}
 /* ── Toast ──────────────────────────────────────────────────────── */
 #toast{
   position:fixed;bottom:20px;right:16px;
-  background:#1f2937;color:#fff;border-radius:10px;
+  background:var(--bg2);color:var(--text);border-radius:10px;
   padding:10px 16px;font-size:13px;font-weight:600;
-  box-shadow:0 4px 20px rgba(0,0,0,.4);
+  box-shadow:var(--shadow-lg);
   transform:translateY(80px);opacity:0;
-  transition:transform .3s,opacity .3s;
+  transition:transform .3s,opacity .3s,background .3s,color .3s;
   z-index:1000;max-width:280px;
   display:flex;align-items:center;gap:8px;
+  border:1px solid var(--border);
   border-left:4px solid var(--accent);
 }
 #toast.show{transform:translateY(0);opacity:1}
-#toast.ok {border-color:#4ade80}
-#toast.err{border-color:#f87171}
+#toast.ok {border-left-color:#4ade80}
+#toast.err{border-left-color:#f87171}
 
 /* ── Responsive ─────────────────────────────────────────────────── */
 @media(max-width:640px){
   .app{padding:6px}
   .dashboard{grid-template-columns:repeat(2,1fr);gap:8px}
-  .controls-bar{flex-direction:column;align-items:stretch}
+  .topbar{flex-direction:column;align-items:stretch}
+  .topbar-right{margin-left:0;justify-content:flex-end}
   .file-label{justify-content:center}
   .date-group{justify-content:center}
   .btn-group{justify-content:center}
   .header-title small{display:none}
-  /* table: deixa table-layout:fixed trabalhar — sem overrides de fonte aqui */
   thead th{font-size:9px;padding:7px 2px;letter-spacing:0}
   tbody td{font-size:10px;padding:4px 2px}
   td select{font-size:9px;padding:1px 1px}
@@ -339,43 +360,8 @@ td select:focus{box-shadow:0 0 0 2px rgba(255,255,255,.45)}
 
 <div class="app">
 
-  <!-- Header -->
-  <div class="header">
-    <div class="header-title">
-      🚛 Monitoramento LH
-      <small>SPA1 — Pátio em Tempo Real</small>
-    </div>
-    <div class="header-right">
-      <div class="sync-badge">
-        <div class="sync-dot" id="syncDot"></div>
-        <span id="syncLabel">Online</span>
-      </div>
-      <button class="theme-toggle" id="btnTheme" title="Alternar tema">🌙</button>
-    </div>
-  </div>
-
-  <!-- KPI Cards -->
-  <div class="dashboard">
-    <div class="card card-total">
-      <div class="card-label">Total</div>
-      <div class="card-value" id="kpiTotal">0</div>
-    </div>
-    <div class="card card-ok">
-      <div class="card-label">Concluídas</div>
-      <div class="card-value" id="kpiConcluida">0</div>
-    </div>
-    <div class="card card-desc">
-      <div class="card-label">Descarga Iniciada</div>
-      <div class="card-value" id="kpiDescarga">0</div>
-    </div>
-    <div class="card card-nc">
-      <div class="card-label">Não Chegou</div>
-      <div class="card-value" id="kpiNaoChegou">0</div>
-    </div>
-  </div>
-
-  <!-- Controls -->
-  <div class="controls-bar">
+  <!-- TOP BAR: controles + status + sync/tema -->
+  <div class="topbar">
     <label class="file-label">
       📂 <span id="fileName">Selecionar CSV / XLSX…</span>
       <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
@@ -393,30 +379,71 @@ td select:focus{box-shadow:0 0 0 2px rgba(255,255,255,.45)}
     </div>
 
     <span id="uploadStatus">—</span>
-  </div>
 
-  <!-- Table -->
-  <div class="table-wrap">
-    <div class="table-scroll" id="printArea">
-      <table>
-        <colgroup>
-          <col class="c-num"><col class="c-doca"><col class="c-rev">
-          <col class="c-placa"><col class="c-in"><col class="c-out">
-          <col class="c-pkg"><col class="c-status"><col class="c-perfil">
-        </colgroup>
-        <thead>
-          <tr>
-            <th>#</th><th>DOCA</th><th>REVERSA</th><th>PLACA</th>
-            <th>YMS IN</th><th>YMS OUT</th><th>PACOTES</th>
-            <th>STATUS</th><th>PERFIL</th>
-          </tr>
-        </thead>
-        <tbody id="tbody">
-          <tr><td colspan="9" class="empty-msg">Carregando dados…</td></tr>
-        </tbody>
-      </table>
+    <div class="topbar-right">
+      <div class="sync-badge">
+        <div class="sync-dot" id="syncDot"></div>
+        <span id="syncLabel">Online</span>
+      </div>
+      <button class="theme-toggle" id="btnTheme" title="Alternar tema">🌙</button>
     </div>
   </div>
+
+  <!-- HEADER + KPI (área do print) -->
+  <div id="printArea">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-title">
+        🚛 Monitoramento LH
+        <small>SPA1 — Pátio em Tempo Real</small>
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="dashboard">
+      <div class="card card-total">
+        <div class="card-label">Total</div>
+        <div class="card-value" id="kpiTotal">0</div>
+      </div>
+      <div class="card card-ok">
+        <div class="card-label">Concluídas</div>
+        <div class="card-value" id="kpiConcluida">0</div>
+      </div>
+      <div class="card card-desc">
+        <div class="card-label">Descarga Iniciada</div>
+        <div class="card-value" id="kpiDescarga">0</div>
+      </div>
+      <div class="card card-nc">
+        <div class="card-label">Não Chegou</div>
+        <div class="card-value" id="kpiNaoChegou">0</div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <colgroup>
+            <col class="c-num"><col class="c-doca"><col class="c-rev">
+            <col class="c-placa"><col class="c-in"><col class="c-out">
+            <col class="c-pkg"><col class="c-status"><col class="c-perfil">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>#</th><th>DOCA</th><th>REVERSA</th><th>PLACA</th>
+              <th>YMS IN</th><th>YMS OUT</th><th>PACOTES</th>
+              <th>STATUS</th><th>PERFIL</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="9" class="empty-msg">Carregando dados…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- #printArea -->
 
 </div><!-- .app -->
 
@@ -760,7 +787,7 @@ function render() {
   <td>${hhmm(row.ymsIn)}</td>
   <td>${hhmm(row.ymsOut)}</td>
   <td>${row.pacotes||"—"}</td>
-  <td>${mkSel(STATUSES,m.status_patio,  id,"status_patio")}</td>
+  <td class="td-status">${mkSel(STATUSES,m.status_patio,id,"status_patio")}</td>
   <td>${mkSel(PERFIS,  m.perfil,        id,"perfil")}</td>
 </tr>`
   }
@@ -793,32 +820,30 @@ async function clearAll() {
 async function exportImg() {
   loading("Gerando imagem…")
   try {
-    const wrap   = $("table-wrap-id")   // printed area = just the table wrapper
-    const app    = document.querySelector(".app")
-    const bg     = getComputedStyle(document.documentElement).getPropertyValue("--bg2").trim() || "#1a1d27"
+    const area   = $("printArea")
+    const scroll = area.querySelector(".table-scroll")
 
-    // Temporarily make table-scroll overflow visible so html2canvas captures all rows
-    const scroll = document.querySelector(".table-scroll")
-    const prevOverflow = scroll.style.overflow
+    // Expand overflow so html2canvas captures all rows
+    const prevO = scroll.style.overflow
     scroll.style.overflow = "visible"
-    app.style.overflow    = "visible"
 
-    const canvas = await html2canvas(app, {
+    const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#0f1117"
+
+    const canvas = await html2canvas(area, {
       scale: 2,
       useCORS: true,
       allowTaint: true,
-      backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#0f1117",
-      scrollX: -window.scrollX,
-      scrollY: -window.scrollY,
-      windowWidth:  app.offsetWidth,
-      windowHeight: app.scrollHeight,
-      width:  app.offsetWidth,
-      height: app.scrollHeight,
+      backgroundColor: bg,
+      scrollX: -(window.scrollX + area.getBoundingClientRect().left),
+      scrollY: -(window.scrollY + area.getBoundingClientRect().top),
+      windowWidth:  area.offsetWidth,
+      windowHeight: area.scrollHeight,
+      width:  area.offsetWidth,
+      height: area.scrollHeight,
       logging: false
     })
 
-    scroll.style.overflow = prevOverflow
-    app.style.overflow    = ""
+    scroll.style.overflow = prevO
 
     const a = document.createElement("a")
     a.download = "monitoramento_" + selectedDate + ".jpg"
