@@ -240,16 +240,16 @@ table{
   width:100%;border-collapse:collapse;
   table-layout:fixed; /* ← colunas respeitam widths definidos */
 }
-/* Larguras das 9 colunas: #, DOCA, REV, PLACA, IN, OUT, PKG, STATUS, PERFIL */
-col.c-num    {width:4%}
-col.c-doca   {width:9%}
-col.c-rev    {width:8%}
+/* Larguras das 10 colunas: #, DOCA, REV-BTN, PLACA, IN, OUT, PKG, STATUS, PERFIL */
+col.c-num    {width:3%}
+col.c-doca   {width:8%}
+col.c-rev    {width:9%}
 col.c-placa  {width:11%}
-col.c-in     {width:7%}
-col.c-out    {width:7%}
-col.c-pkg    {width:8%}
-col.c-status {width:28%}
-col.c-perfil {width:18%}
+col.c-in     {width:6%}
+col.c-out    {width:6%}
+col.c-pkg    {width:7%}
+col.c-status {width:26%}
+col.c-perfil {width:14%}
 
 thead th{
   background:var(--accent);color:#fff;
@@ -285,12 +285,51 @@ tr.st-NaoChegou  td.td-status{background:var(--st-naochegou-bg);color:var(--st-n
 tr.st-Aguardando td.td-status{background:var(--st-aguardando-bg);color:var(--st-aguardando-text)}
 tr.st-Bloqueada  td.td-status{background:var(--st-bloqueada-bg);color:var(--st-bloqueada-text)}
 
+/* ── Botão de Reversa ───────────────────────────────────────────── */
+.btn-reversa{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:100%;border:1.5px solid var(--border);border-radius:6px;
+  padding:3px 4px;cursor:pointer;gap:1px;
+  background:var(--bg2);color:var(--text2);
+  font-family:'Barlow',sans-serif;font-weight:700;font-size:9px;
+  transition:background .15s,border-color .15s,color .15s;
+  line-height:1.2;
+}
+.btn-reversa:hover{border-color:var(--accent);color:var(--accent)}
+.btn-reversa.active{
+  background:#7c3aed;border-color:#6d28d9;color:#fff;
+}
+.btn-reversa .rev-time{
+  font-size:10px;font-weight:800;letter-spacing:.3px;
+  color:inherit;
+}
+.btn-reversa .rev-label{
+  font-size:8px;font-weight:600;opacity:.85;text-transform:uppercase;letter-spacing:.4px;
+}
+
+/* ── Placa com marcação de tipo de reversa ──────────────────────── */
+.placa-wrap{display:flex;flex-direction:column;align-items:center;gap:2px}
 .placa{
   font-family:'Barlow Condensed',sans-serif;font-weight:800;
   font-size:12px;letter-spacing:.2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   display:block;
 }
+.reversa-tag{
+  display:inline-block;
+  font-size:8px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
+  padding:1px 5px;border-radius:10px;
+  white-space:nowrap;
+}
+.reversa-tag.mp  {background:#7c3aed;color:#fff}
+.reversa-tag.pkg {background:#0369a1;color:#fff}
+
+/* ── Forçar centralização em DOCA, STATUS, PERFIL ───────────────── */
+td.td-doca, td.td-status, td.td-perfil { text-align:center !important; }
+td.td-doca select, td.td-perfil select { text-align:center; text-align-last:center; }
+td.td-rev { overflow:visible; padding:3px 2px; vertical-align:middle; }
+/* Placa cell: allow two lines for placa + tag */
+td:has(.placa-wrap){ white-space:normal; overflow:visible; }
 
 /* ── Selects dentro da tabela ───────────────────────────────────── */
 td select{
@@ -531,7 +570,7 @@ $("tbody").addEventListener("change", async e => {
   if (!id || !field) return
   const val = e.target.value
 
-  if (!manualMap[id]) manualMap[id] = { doca:"-", reversa:"Não", status_patio:"Aguardando Doca", perfil:"Granel" }
+  if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Aguardando Doca", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
   manualMap[id][field] = val
   render()
 
@@ -539,7 +578,6 @@ $("tbody").addEventListener("change", async e => {
   const row = e.target.closest("tr")
   if (row) { row.classList.remove("saved"); void row.offsetWidth; row.classList.add("saved") }
 
-  // Save to cloud
   setSyncStatus("loading", "Salvando…")
   try {
     await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, {
@@ -547,6 +585,46 @@ $("tbody").addEventListener("change", async e => {
     })
     setSyncStatus("ok", "Online")
     showToast("✅ Salvo na nuvem", "ok")
+  } catch(err) {
+    setSyncStatus("err", "Erro")
+    showToast("❌ Erro ao salvar", "err")
+    console.error(err)
+  }
+})
+
+// Reversa button click → register or clear time
+$("tbody").addEventListener("click", async e => {
+  const btn = e.target.closest(".btn-reversa")
+  if (!btn) return
+  // Ignore clicks on the type select inside the button
+  if (e.target.classList.contains("rev-type-sel")) return
+
+  const id = btn.dataset.id
+  if (!id) return
+
+  if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Aguardando Doca", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
+
+  const already = manualMap[id].reversa_hora
+  const newTime = already
+    ? ""   // segundo clique → apaga
+    : new Date().toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})
+
+  manualMap[id].reversa_hora = newTime
+  render()
+
+  // Flash row
+  const row = btn.closest("tr")
+  if (row) { row.classList.remove("saved"); void row.offsetWidth; row.classList.add("saved") }
+
+  setSyncStatus("loading", "Salvando…")
+  try {
+    await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, {
+      route_id: id,
+      reversa_hora: newTime,
+      updated_at: new Date().toISOString()
+    })
+    setSyncStatus("ok", "Online")
+    showToast(newTime ? `⏱ Reversa: ${newTime}` : "🗑 Reversa apagada", "ok")
   } catch(err) {
     setSyncStatus("err", "Erro")
     showToast("❌ Erro ao salvar", "err")
@@ -785,20 +863,57 @@ function processData(rows) {
 }
 
 // ── Constants ────────────────────────────────────────────────────────
-const DOCAS    = ["-","D1","D2","D3","D4","D5","D6","D7","D8","D9","D10"]
-const STATUSES = ["Aguardando Doca","Concluída","Descarga iniciada","Docada","Fos","Não Chegou","Bloqueada"]
-const PERFIS   = ["Granel","Paletizada"]
-const REVERSAS = ["Não","Sim"]
-const CLS_MAP  = {
+const DOCAS      = ["-","D1","D2","D3","D4","D5","D6","D7","D8","D9","D10"]
+const STATUSES   = ["Aguardando Doca","Concluída","Descarga iniciada","Docada","Fos","Não Chegou","Bloqueada"]
+const PERFIS     = ["Granel","Paletizada"]
+const RTYPES     = ["—","MP","Pacotes"]   // tipos de reversa
+const CLS_MAP    = {
   "Concluída":"st-Concluida","Descarga iniciada":"st-Descarga",
   "Docada":"st-Docada","Fos":"st-Fos","Não Chegou":"st-NaoChegou",
   "Aguardando Doca":"st-Aguardando","Bloqueada":"st-Bloqueada"
 }
 
-function mkSel(opts, cur, id, field) {
-  return `<select data-id="${id}" data-field="${field}">${
+function mkSel(opts, cur, id, field, extraClass="") {
+  return `<select data-id="${id}" data-field="${field}" class="${extraClass}">${
     opts.map(o=>`<option${o===cur?" selected":""}>${o}</option>`).join("")
   }</select>`
+}
+
+// Botão de reversa: clique registra horário, segundo clique apaga
+function mkReversaBtn(id, m) {
+  const time  = m.reversa_hora || ""
+  const rtype = m.reversa_tipo || "—"
+  const active= !!time
+
+  // Escolha do tipo de reversa (select discreto)
+  const typeOpts = RTYPES.map(o =>
+    `<option value="${o}"${o===rtype?" selected":""}>${o}</option>`
+  ).join("")
+  const typeSelect = `<select class="rev-type-sel" data-id="${id}" data-field="reversa_tipo"
+    style="font-size:8px;width:100%;border:none;background:transparent;color:inherit;cursor:pointer;text-align:center;font-weight:700;"
+    title="Tipo de reversa">${typeOpts}</select>`
+
+  if (active) {
+    return `<div class="btn-reversa active" data-id="${id}" title="Clique para apagar horário">
+      <span class="rev-time">${time}</span>
+      <span class="rev-label">reversa</span>
+      ${typeSelect}
+    </div>`
+  } else {
+    return `<div class="btn-reversa" data-id="${id}" title="Clique para registrar horário">
+      <span class="rev-label">registrar</span>
+      ${typeSelect}
+    </div>`
+  }
+}
+
+function placaHTML(placa, m) {
+  const rtype = m.reversa_tipo || "—"
+  const time  = m.reversa_hora || ""
+  let tag = ""
+  if (time && rtype === "MP")      tag = `<span class="reversa-tag mp">↩ Reversa MP</span>`
+  if (time && rtype === "Pacotes") tag = `<span class="reversa-tag pkg">↩ Rev. Pacotes</span>`
+  return `<div class="placa-wrap"><span class="placa">${placa}</span>${tag}</div>`
 }
 
 // ── Render ───────────────────────────────────────────────────────────
@@ -807,21 +922,21 @@ function render() {
   for (let i=0; i<filtered.length; i++) {
     const row = filtered[i]
     const id  = row.id
-    const m   = manualMap[id]||{doca:"-",reversa:"Não",status_patio:"Aguardando Doca",perfil:"Granel"}
+    const m   = manualMap[id]||{doca:"-",status_patio:"Aguardando Doca",perfil:"Granel",reversa_hora:"",reversa_tipo:"—"}
     const cls = CLS_MAP[m.status_patio]||"st-Aguardando"
     if (m.status_patio==="Concluída")         concluidas++
     if (m.status_patio==="Descarga iniciada") descarga++
     if (m.status_patio==="Não Chegou")        naoChegou++
     html += `<tr class="${cls}">
   <td><b>${i+1}</b></td>
-  <td>${mkSel(DOCAS,    m.doca,         id,"doca")}</td>
-  <td>${mkSel(REVERSAS, m.reversa,      id,"reversa")}</td>
-  <td class="placa">${row.placa}</td>
+  <td class="td-doca">${mkSel(DOCAS, m.doca, id,"doca")}</td>
+  <td class="td-rev">${mkReversaBtn(id, m)}</td>
+  <td>${placaHTML(row.placa, m)}</td>
   <td>${hhmm(row.ymsIn)}</td>
   <td>${hhmm(row.ymsOut)}</td>
   <td>${row.pacotes||"—"}</td>
   <td class="td-status">${mkSel(STATUSES,m.status_patio,id,"status_patio")}</td>
-  <td>${mkSel(PERFIS,  m.perfil,        id,"perfil")}</td>
+  <td class="td-perfil">${mkSel(PERFIS, m.perfil, id,"perfil")}</td>
 </tr>`
   }
   if (!html) html = `<tr><td colspan="9" class="empty-msg">
