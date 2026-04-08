@@ -296,30 +296,27 @@ tr.st-Bloqueada  td.td-status{background:var(--st-bloqueada-bg);color:var(--st-b
   line-height:1.2;
 }
 .btn-reversa:hover{border-color:var(--accent);color:var(--accent)}
-.btn-reversa.active{
-  background:#7c3aed;border-color:#6d28d9;color:#fff;
-}
-.btn-reversa .rev-time{
-  font-size:10px;font-weight:800;letter-spacing:.3px;
-  color:inherit;
-}
-.btn-reversa .rev-label{
-  font-size:8px;font-weight:600;opacity:.85;text-transform:uppercase;letter-spacing:.4px;
-}
+.btn-reversa.active{background:#7c3aed;border-color:#6d28d9;color:#fff;}
+.btn-reversa .rev-time{font-size:11px;font-weight:800;letter-spacing:.3px;color:inherit;}
+.btn-reversa .rev-label{font-size:8px;font-weight:600;opacity:.85;text-transform:uppercase;letter-spacing:.4px;}
 
-/* ── Placa com marcação de tipo de reversa ──────────────────────── */
-.placa-wrap{display:flex;flex-direction:column;align-items:center;gap:2px}
+/* ── Placa + tag de reversa em linha única ──────────────────────── */
+.placa-wrap{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.placa-line{
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  flex-wrap:nowrap;white-space:nowrap;
+}
 .placa{
   font-family:'Barlow Condensed',sans-serif;font-weight:800;
-  font-size:12px;letter-spacing:.2px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  display:block;
+  font-size:12px;letter-spacing:.2px;white-space:nowrap;
 }
 .reversa-tag{
-  display:inline-block;
-  font-size:8px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
-  padding:1px 5px;border-radius:10px;
-  white-space:nowrap;
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:8px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;
+  padding:2px 6px;border-radius:10px;white-space:nowrap;
+  flex-shrink:0;
 }
 .reversa-tag.mp  {background:#7c3aed;color:#fff}
 .reversa-tag.pkg {background:#0369a1;color:#fff}
@@ -328,8 +325,7 @@ tr.st-Bloqueada  td.td-status{background:var(--st-bloqueada-bg);color:var(--st-b
 td.td-doca, td.td-status, td.td-perfil { text-align:center !important; }
 td.td-doca select, td.td-perfil select { text-align:center; text-align-last:center; }
 td.td-rev { overflow:visible; padding:3px 2px; vertical-align:middle; }
-/* Placa cell: allow two lines for placa + tag */
-td:has(.placa-wrap){ white-space:normal; overflow:visible; }
+td.td-placa { overflow:visible; white-space:normal; }
 
 /* ── Selects dentro da tabela ───────────────────────────────────── */
 td select{
@@ -466,8 +462,8 @@ tbody tr:hover td{background:var(--bg4) !important}
     <!-- Header -->
     <div class="header">
       <div class="header-title">
-        🚛 Monitoramento LH SPA1 T2
-        <small></small>
+        🚛 Monitoramento LH
+        <small>SPA1 — Pátio em Tempo Real</small>
         <span class="analyst"><span class="analyst-dot"></span>Analista: Ezequiel Miranda</span>
       </div>
     </div>
@@ -503,7 +499,7 @@ tbody tr:hover td{background:var(--bg4) !important}
           </colgroup>
           <thead>
             <tr>
-              <th>#</th><th>DOCA</th><th>REVERSA</th><th>PLACA</th>
+              <th>#</th><th>DOCA</th><th>HR INICIO</th><th>PLACA</th>
               <th>YMS IN</th><th>YMS OUT</th><th>PACOTES</th>
               <th>STATUS</th><th>PERFIL</th>
             </tr>
@@ -866,7 +862,7 @@ function processData(rows) {
 const DOCAS      = ["-","D1","D2","D3","D4","D5","D6","D7","D8","D9","D10"]
 const STATUSES   = ["Aguardando Doca","Concluída","Descarga iniciada","Docada","Fos","Não Chegou","Bloqueada"]
 const PERFIS     = ["Granel","Paletizada"]
-const RTYPES     = ["—","MP","Pacotes"]   // tipos de reversa
+const RTYPES     = ["—","MP","Pacotes"]
 const CLS_MAP    = {
   "Concluída":"st-Concluida","Descarga iniciada":"st-Descarga",
   "Docada":"st-Docada","Fos":"st-Fos","Não Chegou":"st-NaoChegou",
@@ -879,41 +875,44 @@ function mkSel(opts, cur, id, field, extraClass="") {
   }</select>`
 }
 
-// Botão de reversa: clique registra horário, segundo clique apaga
+// Botão HR INICIO: clique → salva horário; segundo clique → apaga
+// Sem select de tipo — apenas registo de hora
 function mkReversaBtn(id, m) {
   const time  = m.reversa_hora || ""
-  const rtype = m.reversa_tipo || "—"
-  const active= !!time
-
-  // Escolha do tipo de reversa (select discreto)
-  const typeOpts = RTYPES.map(o =>
-    `<option value="${o}"${o===rtype?" selected":""}>${o}</option>`
-  ).join("")
-  const typeSelect = `<select class="rev-type-sel" data-id="${id}" data-field="reversa_tipo"
-    style="font-size:8px;width:100%;border:none;background:transparent;color:inherit;cursor:pointer;text-align:center;font-weight:700;"
-    title="Tipo de reversa">${typeOpts}</select>`
-
+  const active = !!time
   if (active) {
     return `<div class="btn-reversa active" data-id="${id}" title="Clique para apagar horário">
       <span class="rev-time">${time}</span>
-      <span class="rev-label">reversa</span>
-      ${typeSelect}
-    </div>`
-  } else {
-    return `<div class="btn-reversa" data-id="${id}" title="Clique para registrar horário">
-      <span class="rev-label">registrar</span>
-      ${typeSelect}
+      <span class="rev-label">início</span>
     </div>`
   }
+  return `<div class="btn-reversa" data-id="${id}" title="Registrar hora de início">
+    <span class="rev-label">Início</span>
+  </div>`
 }
 
-function placaHTML(placa, m) {
+// Placa: nome em negrito + select tipo de reversa + tag pill colorida
+function placaHTML(placa, m, id) {
   const rtype = m.reversa_tipo || "—"
   const time  = m.reversa_hora || ""
+
+  const typeOpts = RTYPES.map(o =>
+    `<option value="${o}"${o===rtype?" selected":""}>${o==="—"?"tipo…":o}</option>`
+  ).join("")
+  const typeSelect = `<select data-id="${id}" data-field="reversa_tipo"
+    style="font-size:8px;width:100%;border:1px solid var(--border);background:var(--bg3);
+    color:var(--text2);border-radius:4px;padding:1px 2px;cursor:pointer;font-weight:600;
+    text-align:center;">${typeOpts}</select>`
+
   let tag = ""
-  if (time && rtype === "MP")      tag = `<span class="reversa-tag mp">↩ Reversa MP</span>`
-  if (time && rtype === "Pacotes") tag = `<span class="reversa-tag pkg">↩ Rev. Pacotes</span>`
-  return `<div class="placa-wrap"><span class="placa">${placa}</span>${tag}</div>`
+  if (time && rtype === "MP")      tag = `<span class="reversa-tag mp">↩ REVERSA MP</span>`
+  if (time && rtype === "Pacotes") tag = `<span class="reversa-tag pkg">↩ REV. PACOTES</span>`
+
+  return `<div class="placa-wrap">
+    <span class="placa">${placa}</span>
+    ${typeSelect}
+    ${tag}
+  </div>`
 }
 
 // ── Render ───────────────────────────────────────────────────────────
@@ -931,7 +930,7 @@ function render() {
   <td><b>${i+1}</b></td>
   <td class="td-doca">${mkSel(DOCAS, m.doca, id,"doca")}</td>
   <td class="td-rev">${mkReversaBtn(id, m)}</td>
-  <td>${placaHTML(row.placa, m)}</td>
+  <td class="td-placa">${placaHTML(row.placa, m, id)}</td>
   <td>${hhmm(row.ymsIn)}</td>
   <td>${hhmm(row.ymsOut)}</td>
   <td>${row.pacotes||"—"}</td>
