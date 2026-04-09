@@ -240,14 +240,14 @@ table{
   width:100%;border-collapse:collapse;
   table-layout:fixed; /* ← colunas respeitam widths definidos */
 }
-/* Larguras das 10 colunas: #, DOCA, REV-BTN, PLACA, IN, OUT, PCT, STATUS, PERFIL */
+/* Larguras das 10 colunas: #, DOCA, REV-BTN, PLACA, IN, OUT, PKG, STATUS, PERFIL */
 col.c-num    {width:3%}
 col.c-doca   {width:8%}
 col.c-rev    {width:9%}
 col.c-placa  {width:11%}
 col.c-in     {width:6%}
 col.c-out    {width:6%}
-col.c-PCT    {width:7%}
+col.c-pkg    {width:7%}
 col.c-status {width:26%}
 col.c-perfil {width:14%}
 
@@ -300,7 +300,7 @@ tr.st-Bloqueada  td.td-status{background:var(--st-bloqueada-bg);color:var(--st-b
 .btn-reversa:not(.active){font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;opacity:.7}
 .btn-reversa.active{background:#7c3aed;border-color:#6d28d9;color:#fff;}
 
-/* ── Toggle MP / PCT abaixo da placa ────────────────────────────── */
+/* ── Toggle MP / PKT abaixo da placa ────────────────────────────── */
 .reversa-toggles{
   display:flex;gap:2px;margin-top:2px;justify-content:center;
 }
@@ -314,7 +314,7 @@ tr.st-Bloqueada  td.td-status{background:var(--st-bloqueada-bg);color:var(--st-b
 }
 .rtgl:hover{border-color:var(--text2);color:var(--text2)}
 .rtgl.on.mp  {background:#7c3aed;color:#fff;border-color:#6d28d9}
-.rtgl.on.PCT {background:#0369a1;color:#fff;border-color:#075985}
+.rtgl.on.pkg {background:#0369a1;color:#fff;border-color:#075985}
 
 /* ── Placa + tag de reversa ─────────────────────────────────────── */
 .placa-wrap{display:flex;flex-direction:column;align-items:center;gap:1px}
@@ -328,11 +328,13 @@ tr.st-Bloqueada  td.td-status{background:var(--st-bloqueada-bg);color:var(--st-b
   padding:2px 6px;border-radius:10px;white-space:nowrap;flex-shrink:0;
 }
 .reversa-tag.mp  {background:#7c3aed;color:#fff}
-.reversa-tag.PCT {background:#0369a1;color:#fff}
+.reversa-tag.pkg {background:#0369a1;color:#fff}
 
 /* ── Forçar centralização em DOCA, STATUS, PERFIL ───────────────── */
 td.td-doca, td.td-status, td.td-perfil { text-align:center !important; }
-td.td-doca select, td.td-perfil select { text-align:center; text-align-last:center; }
+td.td-doca select, td.td-perfil select, td.td-status select {
+  text-align:center; text-align-last:center;
+}
 td.td-rev { overflow:visible; padding:3px 2px; vertical-align:middle; }
 td.td-placa { overflow:visible; white-space:normal; }
 
@@ -450,7 +452,7 @@ tbody tr:hover td{background:var(--bg4) !important}
 
     <div class="btn-group">
       <button id="btnUpload" class="btn btn-upload">⬆ Enviar</button>
-      <button id="btnPrint"  class="btn btn-print">📸</button>
+      <button id="btnPrint"  class="btn btn-print">📸 JPG</button>
       <button id="btnClear"  class="btn btn-clear">🗑</button>
     </div>
 
@@ -504,7 +506,7 @@ tbody tr:hover td{background:var(--bg4) !important}
           <colgroup>
             <col class="c-num"><col class="c-doca"><col class="c-rev">
             <col class="c-placa"><col class="c-in"><col class="c-out">
-            <col class="c-PCT"><col class="c-status"><col class="c-perfil">
+            <col class="c-pkg"><col class="c-status"><col class="c-perfil">
           </colgroup>
           <thead>
             <tr>
@@ -620,7 +622,7 @@ $("tbody").addEventListener("click", async e => {
     return
   }
 
-  // ── Reversa type toggle (MP / PCT) ───────────────────────────────
+  // ── Reversa type toggle (MP / PKT) ───────────────────────────────
   const tgl = e.target.closest(".rtgl")
   if (tgl) {
     const id    = tgl.dataset.id
@@ -846,6 +848,8 @@ function applyFilter() {
 function processData(rows) {
   if (!rows?.length) { filtered=[]; render(); return }
   filtered = []
+  const autoUpdates = []   // {id} que precisam ser marcados como Concluída
+
   for (const src of rows) {
     const placa     = v(src,"Veículo de carga 1")||v(src,"Veículo de carga 2")
     const destino   = v(src,"Destino").toUpperCase()
@@ -861,6 +865,18 @@ function processData(rows) {
     if (motorista.includes("RODOPENHA"))                     continue
     if (!placa||placa.toLowerCase().includes("sem placa"))   continue
 
+    // ── Auto-Concluída: YMS OUT preenchido → marca Concluída ────────
+    if (ymsOut && ymsOut.trim()) {
+      const cur = manualMap[id]?.status_patio || ""
+      // Só auto-marca se ainda não foi definido manualmente como outra coisa
+      if (cur !== "Concluída") {
+        if (!manualMap[id]) manualMap[id] = {}
+        manualMap[id].status_patio = "Concluída"
+        manualMap[id].route_id     = id
+        autoUpdates.push(id)
+      }
+    }
+
     filtered.push({ id, placa, ymsIn, ymsOut, pacotes })
   }
 
@@ -871,6 +887,17 @@ function processData(rows) {
     return a.ymsIn.localeCompare(b.ymsIn)
   })
   render()
+
+  // Persiste as auto-marcações no Firebase em background (sem bloquear a UI)
+  if (autoUpdates.length) {
+    autoUpdates.forEach(id => {
+      rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, {
+        route_id: id,
+        status_patio: "Concluída",
+        updated_at: new Date().toISOString()
+      }).catch(e => console.warn("Auto-status save error:", e))
+    })
+  }
 }
 
 // ── Constants ────────────────────────────────────────────────────────
@@ -899,7 +926,7 @@ function mkReversaBtn(id, m) {
   return `<div class="btn-reversa" data-id="${id}" title="Registrar hora de início">Início</div>`
 }
 
-// Placa: nome + dois mini-toggles MP / PCT + pílula quando ativo
+// Placa: nome + dois mini-toggles MP / PKT + pílula quando ativo
 function placaHTML(placa, m, id) {
   const rtype = m.reversa_tipo || "—"
 
@@ -908,12 +935,12 @@ function placaHTML(placa, m, id) {
 
   const toggles = `<div class="reversa-toggles">
     <span class="rtgl mp${mpOn?" on mp":""}" data-id="${id}" data-rtype="MP">MP</span>
-    <span class="rtgl PCT${pkOn?" on PCT":""}" data-id="${id}" data-rtype="Pacotes">PCT</span>
+    <span class="rtgl pkg${pkOn?" on pkg":""}" data-id="${id}" data-rtype="Pacotes">PKT</span>
   </div>`
 
   let tag = ""
   if (mpOn) tag = `<span class="reversa-tag mp">↩ REVERSA MP</span>`
-  if (pkOn) tag = `<span class="reversa-tag PCT">↩ REV. PACOTES</span>`
+  if (pkOn) tag = `<span class="reversa-tag pkg">↩ REV. PACOTES</span>`
 
   return `<div class="placa-wrap">
     <span class="placa">${placa}</span>
