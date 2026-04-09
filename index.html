@@ -452,7 +452,7 @@ tbody tr:hover td{background:var(--bg4) !important}
 
     <div class="btn-group">
       <button id="btnUpload" class="btn btn-upload">⬆ Enviar</button>
-      <button id="btnPrint"  class="btn btn-print">📸</button>
+      <button id="btnPrint"  class="btn btn-print">📸 JPG</button>
       <button id="btnClear"  class="btn btn-clear">🗑</button>
     </div>
 
@@ -577,7 +577,7 @@ $("tbody").addEventListener("change", async e => {
   if (!id || !field) return
   const val = e.target.value
 
-  if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Aguardando Doca", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
+  if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
   manualMap[id][field] = val
   render()
 
@@ -606,7 +606,7 @@ $("tbody").addEventListener("click", async e => {
   if (btn) {
     const id = btn.dataset.id
     if (!id) return
-    if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Aguardando Doca", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
+    if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
     const already = manualMap[id].reversa_hora
     const newTime = already ? "" : new Date().toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})
     manualMap[id].reversa_hora = newTime
@@ -628,7 +628,7 @@ $("tbody").addEventListener("click", async e => {
     const id    = tgl.dataset.id
     const rtype = tgl.dataset.rtype
     if (!id) return
-    if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Aguardando Doca", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
+    if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
     // Toggle: clique no mesmo → desmarca; clique em outro → marca
     const cur = manualMap[id].reversa_tipo || "—"
     const newType = cur === rtype ? "—" : rtype
@@ -955,7 +955,7 @@ function render() {
   for (let i=0; i<filtered.length; i++) {
     const row = filtered[i]
     const id  = row.id
-    const m   = manualMap[id]||{doca:"-",status_patio:"Aguardando Doca",perfil:"Granel",reversa_hora:"",reversa_tipo:"—"}
+    const m   = manualMap[id]||{doca:"-",status_patio:"Não Chegou",perfil:"Granel",reversa_hora:"",reversa_tipo:"—"}
     const cls = CLS_MAP[m.status_patio]||"st-Aguardando"
     if (m.status_patio==="Concluída")         concluidas++
     if (m.status_patio==="Descarga iniciada") descarga++
