@@ -152,7 +152,7 @@ tbody td,td select,#toast{
 /* ── KPI cards ──────────────────────────────────────────────────── */
 .dashboard{
   display:grid;
-  grid-template-columns:repeat(4,1fr);
+  grid-template-columns:repeat(5,1fr);
   gap:10px;
   margin-bottom:12px;
 }
@@ -172,6 +172,7 @@ tbody td,td select,#toast{
 .card-ok      .card-value{color:var(--st-concluida)}
 .card-desc    .card-value{color:var(--st-descarga)}
 .card-nc      .card-value{color:var(--st-naochegou)}
+.card-pkg     .card-value{color:#0ea5e9}
 
 /* ── Top bar (controles — fora do print) ────────────────────────── */
 .topbar{
@@ -496,6 +497,10 @@ tbody tr:hover td{background:var(--bg4) !important}
       <div class="card card-nc">
         <div class="card-label">Não Chegou</div>
         <div class="card-value" id="kpiNaoChegou">0</div>
+      </div>
+      <div class="card card-pkg">
+        <div class="card-label">Total Pacotes</div>
+        <div class="card-value" id="kpiPacotes">0</div>
       </div>
     </div>
 
@@ -951,15 +956,16 @@ function placaHTML(placa, m, id) {
 
 // ── Render ───────────────────────────────────────────────────────────
 function render() {
-  let html="", concluidas=0, descarga=0, naoChegou=0
+  let html="", concluidas=0, descarga=0, naoChegou=0, totalPacotes=0
   for (let i=0; i<filtered.length; i++) {
     const row = filtered[i]
     const id  = row.id
     const m   = manualMap[id]||{doca:"-",status_patio:"Não Chegou",perfil:"Granel",reversa_hora:"",reversa_tipo:"—"}
-    const cls = CLS_MAP[m.status_patio]||"st-Aguardando"
+    const cls = CLS_MAP[m.status_patio]||"st-NaoChegou"
     if (m.status_patio==="Concluída")         concluidas++
     if (m.status_patio==="Descarga iniciada") descarga++
     if (m.status_patio==="Não Chegou")        naoChegou++
+    totalPacotes += parseInt(row.pacotes)||0
     html += `<tr class="${cls}">
   <td><b>${i+1}</b></td>
   <td class="td-doca">${mkSel(DOCAS, m.doca, id,"doca")}</td>
@@ -981,6 +987,7 @@ function render() {
   $("kpiConcluida").textContent = concluidas
   $("kpiDescarga").textContent  = descarga
   $("kpiNaoChegou").textContent = naoChegou
+  $("kpiPacotes").textContent   = totalPacotes.toLocaleString("pt-BR")
 }
 
 // ── Clear all ────────────────────────────────────────────────────────
