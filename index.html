@@ -453,7 +453,7 @@ tbody tr:hover td{background:var(--bg4) !important}
 
     <div class="btn-group">
       <button id="btnUpload" class="btn btn-upload">⬆ Enviar</button>
-      <button id="btnPrint"  class="btn btn-print">📸</button>
+      <button id="btnPrint"  class="btn btn-print">📸 JPG</button>
       <button id="btnClear"  class="btn btn-clear">🗑</button>
     </div>
 
@@ -474,7 +474,7 @@ tbody tr:hover td{background:var(--bg4) !important}
     <!-- Header -->
     <div class="header">
       <div class="header-title">
-        🚛 Monitoramento LH SPA1 T2
+        🚛 Monitoramento LH SPA1
         <small></small>
         <span class="analyst"><span class="analyst-dot"></span>Analista: Ezequiel Miranda</span>
       </div>
@@ -1004,73 +1004,90 @@ async function clearAll() {
   done()
 }
 
-// ── Export JPG ───────────────────────────────────────────────────────
+// ── Export PNG (alta resolução) ───────────────────────────────────
 async function exportImg() {
-  loading("Gerando imagem…")
+  loading("Gerando imagem em alta resolução…")
   try {
     const area   = $("printArea")
     const scroll = area.querySelector(".table-scroll")
+    const cs     = getComputedStyle(document.documentElement)
+    const bg     = cs.getPropertyValue("--bg").trim() || "#0f1117"
 
-    // 1. Snapshot all select values and replace with styled spans
-    const selects = area.querySelectorAll("td select")
+    // 1. Substituir selects por spans legíveis no render da captura
+    const selects = area.querySelectorAll("td select, td .rtgl, td .btn-reversa")
     const originals = []
-    selects.forEach(sel => {
-      const val = sel.options[sel.selectedIndex]?.text || sel.value
+    area.querySelectorAll("td select").forEach(sel => {
+      const val  = sel.options[sel.selectedIndex]?.text || sel.value
       const span = document.createElement("span")
       span.textContent = val
-      span.style.cssText = `
-        display:block;width:100%;text-align:center;font-size:10px;
-        font-family:'Barlow',sans-serif;font-weight:700;
-        color:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-      `
-      originals.push({ sel, parent: sel.parentNode, next: sel.nextSibling, span })
+      span.style.cssText = [
+        "display:block","width:100%","text-align:center",
+        "font-size:12px","font-family:'Barlow',sans-serif","font-weight:700",
+        "color:inherit","overflow:hidden","text-overflow:ellipsis","white-space:nowrap"
+      ].join(";")
+      originals.push({ sel, parent: sel.parentNode, span })
       sel.parentNode.replaceChild(span, sel)
     })
 
-    // 2. Expand overflow so html2canvas sees all rows
-    const prevO = scroll.style.overflow
+    // 2. Expandir overflow para capturar todas as linhas
+    const prevO         = scroll.style.overflow
+    const prevAreaW     = area.style.width
     scroll.style.overflow = "visible"
 
-    // 3. Resolve CSS variable for background
-    const cs  = getComputedStyle(document.documentElement)
-    const bg  = cs.getPropertyValue("--bg").trim() || "#0f1117"
+    // 3. Forçar largura total do conteúdo (evita corte em telas estreitas)
+    const fullW = Math.max(area.scrollWidth, 900)
+    area.style.width = fullW + "px"
 
     const canvas = await html2canvas(area, {
-      scale: 2,
+      scale: 4,                      // 4× = resolução muito alta (~300 dpi equivalente)
       useCORS: true,
       allowTaint: true,
       backgroundColor: bg,
       scrollX: -(window.scrollX + area.getBoundingClientRect().left),
       scrollY: -(window.scrollY + area.getBoundingClientRect().top),
-      windowWidth:  area.offsetWidth,
+      windowWidth:  fullW,
       windowHeight: area.scrollHeight,
-      width:  area.offsetWidth,
+      width:  fullW,
       height: area.scrollHeight,
       logging: false,
+      imageTimeout: 0,
       onclone: (doc) => {
-        // Ensure cloned table cells don't clip text
+        // Garante que células não cortam texto no clone
         doc.querySelectorAll("td, th").forEach(el => {
-          el.style.overflow    = "hidden"
-          el.style.textOverflow= "ellipsis"
-          el.style.whiteSpace  = "nowrap"
+          el.style.overflow     = "hidden"
+          el.style.textOverflow = "ellipsis"
+          el.style.whiteSpace   = "nowrap"
+          el.style.fontSize     = "12px"
+        })
+        // Aumenta fonte dos headers no clone
+        doc.querySelectorAll("thead th").forEach(el => {
+          el.style.fontSize  = "13px"
+          el.style.padding   = "10px 6px"
+        })
+        // Aumenta altura das linhas
+        doc.querySelectorAll("tbody td").forEach(el => {
+          el.style.padding   = "7px 5px"
+          el.style.fontSize  = "12px"
         })
       }
     })
 
-    // 4. Restore selects
+    // 4. Restaurar estado original
     scroll.style.overflow = prevO
-    originals.forEach(({ sel, parent, next, span }) => {
+    area.style.width      = prevAreaW
+    originals.forEach(({ sel, parent, span }) => {
       parent.replaceChild(sel, span)
     })
 
+    // 5. Salvar como PNG (lossless — melhor qualidade que JPEG)
     const a = document.createElement("a")
-    a.download = "monitoramento_" + selectedDate + ".jpg"
-    a.href = canvas.toDataURL("image/jpeg", .95)
+    a.download = "monitoramento_" + selectedDate + ".png"
+    a.href = canvas.toDataURL("image/png")
     a.click()
+
   } catch(e) {
     console.error(e)
     showToast("❌ Erro ao gerar imagem","err")
-    // Ensure selects are never lost on error — reload is the fallback
   }
   done()
 }
