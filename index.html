@@ -453,7 +453,7 @@ tbody tr:hover td{background:var(--bg4) !important}
 
     <div class="btn-group">
       <button id="btnUpload" class="btn btn-upload">⬆ Enviar</button>
-      <button id="btnPrint"  class="btn btn-print">📸 JPG</button>
+      <button id="btnPrint"  class="btn btn-print">📸</button>
       <button id="btnClear"  class="btn btn-clear">🗑</button>
     </div>
 
@@ -1010,11 +1010,11 @@ async function exportImg() {
   try {
     const area   = $("printArea")
     const scroll = area.querySelector(".table-scroll")
+    const table  = area.querySelector("table")
     const cs     = getComputedStyle(document.documentElement)
     const bg     = cs.getPropertyValue("--bg").trim() || "#0f1117"
 
-    // 1. Substituir selects por spans legíveis no render da captura
-    const selects = area.querySelectorAll("td select, td .rtgl, td .btn-reversa")
+    // 1. Substituir selects por spans legíveis
     const originals = []
     area.querySelectorAll("td select").forEach(sel => {
       const val  = sel.options[sel.selectedIndex]?.text || sel.value
@@ -1029,57 +1029,74 @@ async function exportImg() {
       sel.parentNode.replaceChild(span, sel)
     })
 
-    // 2. Expandir overflow para capturar todas as linhas
-    const prevO         = scroll.style.overflow
-    const prevAreaW     = area.style.width
-    scroll.style.overflow = "visible"
+    // 2. Expandir overflow ANTES de medir alturas
+    const prevScrollO  = scroll.style.overflow
+    const prevScrollH  = scroll.style.height
+    const prevAreaW    = area.style.width
+    const prevAreaO    = area.style.overflow
 
-    // 3. Forçar largura total do conteúdo (evita corte em telas estreitas)
-    const fullW = Math.max(area.scrollWidth, 900)
+    scroll.style.overflow = "visible"
+    scroll.style.height   = "auto"
+    area.style.overflow   = "visible"
+
+    // 3. Forçar largura completa
+    const fullW = Math.max(area.scrollWidth, table ? table.scrollWidth : 900, 900)
     area.style.width = fullW + "px"
 
+    // 4. Medir altura REAL depois de expandir (inclui todas as linhas)
+    //    Adiciona padding extra no fundo para garantir que nada seja cortado
+    const fullH = area.scrollHeight + 32
+
     const canvas = await html2canvas(area, {
-      scale: 4,                      // 4× = resolução muito alta (~300 dpi equivalente)
+      scale: 4,
       useCORS: true,
       allowTaint: true,
       backgroundColor: bg,
       scrollX: -(window.scrollX + area.getBoundingClientRect().left),
       scrollY: -(window.scrollY + area.getBoundingClientRect().top),
       windowWidth:  fullW,
-      windowHeight: area.scrollHeight,
+      windowHeight: fullH,
       width:  fullW,
-      height: area.scrollHeight,
+      height: fullH,
       logging: false,
       imageTimeout: 0,
       onclone: (doc) => {
-        // Garante que células não cortam texto no clone
+        // Expandir overflow no clone também
+        const cloneScroll = doc.querySelector(".table-scroll")
+        if (cloneScroll) {
+          cloneScroll.style.overflow = "visible"
+          cloneScroll.style.height   = "auto"
+        }
+        const cloneArea = doc.getElementById("printArea")
+        if (cloneArea) cloneArea.style.overflow = "visible"
+
         doc.querySelectorAll("td, th").forEach(el => {
           el.style.overflow     = "hidden"
           el.style.textOverflow = "ellipsis"
           el.style.whiteSpace   = "nowrap"
           el.style.fontSize     = "12px"
         })
-        // Aumenta fonte dos headers no clone
         doc.querySelectorAll("thead th").forEach(el => {
-          el.style.fontSize  = "13px"
-          el.style.padding   = "10px 6px"
+          el.style.fontSize = "13px"
+          el.style.padding  = "10px 6px"
         })
-        // Aumenta altura das linhas
         doc.querySelectorAll("tbody td").forEach(el => {
-          el.style.padding   = "7px 5px"
-          el.style.fontSize  = "12px"
+          el.style.padding  = "7px 5px"
+          el.style.fontSize = "12px"
         })
       }
     })
 
-    // 4. Restaurar estado original
-    scroll.style.overflow = prevO
+    // 5. Restaurar estado original
+    scroll.style.overflow = prevScrollO
+    scroll.style.height   = prevScrollH
+    area.style.overflow   = prevAreaO
     area.style.width      = prevAreaW
     originals.forEach(({ sel, parent, span }) => {
       parent.replaceChild(sel, span)
     })
 
-    // 5. Salvar como PNG (lossless — melhor qualidade que JPEG)
+    // 6. Salvar como PNG
     const a = document.createElement("a")
     a.download = "monitoramento_" + selectedDate + ".png"
     a.href = canvas.toDataURL("image/png")
