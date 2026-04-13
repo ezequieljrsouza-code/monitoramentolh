@@ -584,6 +584,14 @@ $("tbody").addEventListener("change", async e => {
 
   if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
   manualMap[id][field] = val
+
+  // Auto HR INICIO: ao marcar "Descarga iniciada", registra horário se ainda não preenchido
+  let autoHora = null
+  if (field === "status_patio" && val === "Descarga iniciada" && !manualMap[id].reversa_hora) {
+    autoHora = new Date().toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})
+    manualMap[id].reversa_hora = autoHora
+  }
+
   render()
 
   // Flash green on row
@@ -592,9 +600,9 @@ $("tbody").addEventListener("change", async e => {
 
   setSyncStatus("loading", "Salvando…")
   try {
-    await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, {
-      route_id: id, [field]: val, updated_at: new Date().toISOString()
-    })
+    const patch = { route_id: id, [field]: val, updated_at: new Date().toISOString() }
+    if (autoHora) patch.reversa_hora = autoHora
+    await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, patch)
     setSyncStatus("ok", "Online")
     showToast("✅ Salvo na nuvem", "ok")
   } catch(err) {
