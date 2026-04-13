@@ -623,12 +623,24 @@ $("tbody").addEventListener("click", async e => {
     const already = manualMap[id].reversa_hora
     const newTime = already ? "" : new Date().toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})
     manualMap[id].reversa_hora = newTime
+
+    // Auto status: ao registrar hora → Descarga iniciada (se ainda não alterado manualmente)
+    // Ao apagar hora → não reverte o status
+    let autoStatus = null
+    const curStatus = manualMap[id].status_patio || "Não Chegou"
+    if (newTime && curStatus === "Não Chegou") {
+      autoStatus = "Descarga iniciada"
+      manualMap[id].status_patio = autoStatus
+    }
+
     render()
     const row = btn.closest("tr")
     if (row) { row.classList.remove("saved"); void row.offsetWidth; row.classList.add("saved") }
     setSyncStatus("loading", "Salvando…")
     try {
-      await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, { route_id:id, reversa_hora:newTime, updated_at:new Date().toISOString() })
+      const patch = { route_id:id, reversa_hora:newTime, updated_at:new Date().toISOString() }
+      if (autoStatus) patch.status_patio = autoStatus
+      await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, patch)
       setSyncStatus("ok", "Online")
       showToast(newTime ? `⏱ Início: ${newTime}` : "🗑 Hora apagada", "ok")
     } catch(err) { setSyncStatus("err","Erro"); showToast("❌ Erro ao salvar","err"); console.error(err) }
