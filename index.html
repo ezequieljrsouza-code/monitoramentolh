@@ -543,7 +543,55 @@ tbody tr:hover td{background:var(--bg4) !important}
       </div>
     </div>
 
+    <!-- Botão discreto para adicionar placa manual -->
+    <div style="text-align:center;margin-top:8px;padding-bottom:4px;">
+      <button id="btnAddPlaca"
+        style="background:none;border:1px dashed var(--border);border-radius:8px;
+        color:var(--text3);font-size:11px;font-family:'Barlow',sans-serif;font-weight:600;
+        padding:5px 14px;cursor:pointer;transition:color .15s,border-color .15s;"
+        onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'"
+        onmouseout="this.style.color='var(--text3)';this.style.borderColor='var(--border)'"
+        title="Adicionar placa manualmente">+ placa manual</button>
+    </div>
+
   </div><!-- #printArea -->
+
+  <!-- Modal adicionar placa -->
+  <div id="modalPlaca" style="
+    display:none;position:fixed;inset:0;z-index:998;
+    background:rgba(0,0,0,.55);backdrop-filter:blur(3px);
+    align-items:center;justify-content:center;">
+    <div style="
+      background:var(--bg2);border:1px solid var(--border);border-radius:14px;
+      padding:20px 24px;width:min(340px,92vw);box-shadow:var(--shadow-lg);">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;
+        color:var(--text);margin-bottom:14px;letter-spacing:.5px;">
+        ➕ Adicionar Placa Manual
+      </div>
+      <label style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">Placa</label>
+      <input id="inputPlaca" placeholder="Ex: ABC1234" maxlength="10"
+        style="display:block;width:100%;margin:4px 0 12px;padding:8px 10px;
+        border:1px solid var(--border);border-radius:8px;background:var(--bg3);
+        color:var(--text);font-size:14px;font-family:'Barlow Condensed',sans-serif;
+        font-weight:800;letter-spacing:.5px;outline:none;text-transform:uppercase;">
+      <label style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">Transportadora (opcional)</label>
+      <input id="inputTransp" placeholder="Ex: DHL"
+        style="display:block;width:100%;margin:4px 0 16px;padding:8px 10px;
+        border:1px solid var(--border);border-radius:8px;background:var(--bg3);
+        color:var(--text);font-size:13px;font-family:'Barlow',sans-serif;
+        font-weight:600;outline:none;">
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button id="btnModalCancel"
+          style="border:1px solid var(--border);background:none;color:var(--text2);
+          border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;
+          font-family:'Barlow',sans-serif;cursor:pointer;">Cancelar</button>
+        <button id="btnModalAdd"
+          style="border:none;background:var(--accent);color:#fff;
+          border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;
+          font-family:'Barlow',sans-serif;cursor:pointer;">Adicionar</button>
+      </div>
+    </div>
+  </div>
 
 </div><!-- .app -->
 
@@ -581,6 +629,51 @@ $("btnUpload").addEventListener("click",   handleUpload)
 $("btnPrint").addEventListener ("click",   exportImg)
 $("btnClear").addEventListener ("click",   clearAll)
 $("datePicker").addEventListener("change", applyFilter)
+
+// ── Placa manual ──────────────────────────────────────────────────────
+const modal = $("modalPlaca")
+$("btnAddPlaca").addEventListener("click", () => {
+  $("inputPlaca").value = ""
+  $("inputTransp").value = ""
+  modal.style.display = "flex"
+  setTimeout(() => $("inputPlaca").focus(), 50)
+})
+$("btnModalCancel").addEventListener("click", () => { modal.style.display = "none" })
+modal.addEventListener("click", e => { if (e.target === modal) modal.style.display = "none" })
+
+$("btnModalAdd").addEventListener("click", async () => {
+  const placa = $("inputPlaca").value.trim().toUpperCase()
+  if (!placa) { $("inputPlaca").focus(); return }
+  const transp = $("inputTransp").value.trim().toUpperCase()
+
+  // ID sintético para placas manuais: "MANUAL_<placa>_<data>"
+  const id = "MANUAL_" + placa + "_" + selectedDate.replace(/-/g,"")
+
+  // Adiciona em filtered e manualMap localmente
+  if (!filtered.find(r => r.id === id)) {
+    filtered.push({ id, placa, ymsIn:"", ymsOut:"", pacotes:"", motorista:transp, _manual:true })
+  }
+  if (!manualMap[id]) {
+    manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—", route_id:id }
+  }
+  render()
+  modal.style.display = "none"
+  showToast(`✅ Placa ${placa} adicionada`, "ok")
+
+  // Salva no Firebase
+  setSyncStatus("loading","Salvando…")
+  try {
+    await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, {
+      route_id: id, placa_manual: placa, motorista_manual: transp,
+      data_ref: selectedDate, updated_at: new Date().toISOString()
+    })
+    setSyncStatus("ok","Online")
+  } catch(e) { setSyncStatus("err","Erro"); console.error(e) }
+})
+
+// Enter no input confirma
+$("inputPlaca").addEventListener("keydown", e => { if (e.key==="Enter") $("btnModalAdd").click() })
+$("inputTransp").addEventListener("keydown", e => { if (e.key==="Enter") $("btnModalAdd").click() })
 
 // File chosen → show table IMMEDIATELY, then optionally cloud upload
 $("fileInput").addEventListener("change", e => {
@@ -863,6 +956,25 @@ async function loadManual() {
   manualMap = {}
   if (data) for (const [k,val] of Object.entries(data)) manualMap[val.route_id||k] = val
   lastManualHash = JSON.stringify(manualMap)
+  // Restaura placas manuais da data atual que foram salvas no Firebase
+  injectManualPlates()
+}
+
+// Injeta placas manuais (MANUAL_*) do manualMap em filtered se ainda não estiverem
+function injectManualPlates() {
+  for (const [id, val] of Object.entries(manualMap)) {
+    if (!id.startsWith("MANUAL_")) continue
+    if (val.data_ref && val.data_ref !== selectedDate) continue
+    if (!filtered.find(r => r.id === id)) {
+      filtered.push({
+        id,
+        placa:    val.placa_manual    || id.split("_")[1] || "—",
+        ymsIn:    "", ymsOut:   "", pacotes:  "",
+        motorista: val.motorista_manual || "",
+        _manual:  true
+      })
+    }
+  }
 }
 
 // ── Polling ──────────────────────────────────────────────────────────
@@ -884,6 +996,7 @@ function startPolling() {
 function applyFilter() {
   selectedDate = $("datePicker").value
   processData(allRows)
+  injectManualPlates()
 }
 
 /**
