@@ -347,7 +347,39 @@ tr.st-Bloqueada  td.td-status{background:var(--st-bloqueada-bg);color:var(--st-b
 .reversa-tag.mp  {background:#7c3aed;color:#fff}
 .reversa-tag.pkg {background:#0369a1;color:#fff}
 
-/* ── Forçar centralização em DOCA, STATUS, PERFIL ───────────────── */
+/* ── YMS manual edit ────────────────────────────────────────────── */
+td.td-yms{ position:relative; }
+.yms-val{
+  cursor:pointer;font-weight:700;
+  border-bottom:1px dashed var(--text3);
+}
+.yms-val:hover{ color:var(--accent); border-bottom-color:var(--accent); }
+.yms-edit{
+  cursor:pointer;color:var(--text3);font-size:10px;
+  border-bottom:1px dashed transparent;
+}
+.yms-edit:hover{ color:var(--accent);border-bottom-color:var(--accent); }
+.yms-popup{
+  position:absolute;z-index:50;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:8px;padding:6px 8px;
+  box-shadow:var(--shadow-lg);
+  display:flex;align-items:center;gap:6px;
+  top:calc(100% + 4px);left:50%;transform:translateX(-50%);
+  white-space:nowrap;
+}
+.yms-popup input[type=time]{
+  border:1px solid var(--border);border-radius:5px;
+  background:var(--bg3);color:var(--text);
+  font-size:12px;font-family:'Barlow',sans-serif;font-weight:700;
+  padding:3px 5px;outline:none;width:90px;
+}
+.yms-popup button{
+  border:none;border-radius:5px;padding:3px 8px;
+  font-size:11px;font-weight:700;font-family:'Barlow',sans-serif;cursor:pointer;
+}
+.yms-popup .yms-ok { background:var(--accent);color:#fff; }
+.yms-popup .yms-cl { background:var(--bg4);color:var(--text2); }
 td.td-doca, td.td-status, td.td-perfil { text-align:center !important; }
 td.td-doca select, td.td-perfil select, td.td-status select {
   text-align:center; text-align-last:center;
@@ -551,7 +583,7 @@ tbody tr:hover td{background:var(--bg4) !important}
         padding:5px 14px;cursor:pointer;transition:color .15s,border-color .15s;"
         onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'"
         onmouseout="this.style.color='var(--text3)';this.style.borderColor='var(--border)'"
-        title="Adicionar placa Manualmente">+ Placa Manual</button>
+        title="Adicionar placa manualmente">+ placa manual</button>
     </div>
 
   </div><!-- #printArea -->
@@ -723,6 +755,54 @@ $("tbody").addEventListener("change", async e => {
 
 // Tooltip da transportadora: toque no celular abre/fecha
 $("tbody").addEventListener("click", async e => {
+  // ── YMS IN / OUT manual ───────────────────────────────────────────
+  const ymsSpan = e.target.closest(".yms-edit, .yms-val")
+  if (ymsSpan) {
+    // Fecha qualquer popup aberto
+    document.querySelectorAll(".yms-popup").forEach(p => p.remove())
+
+    const id    = ymsSpan.dataset.id
+    const field = ymsSpan.dataset.field
+    const cur   = (manualMap[id]?.[field] || "").replace(/[^0-9:]/g,"")
+
+    const popup = document.createElement("div")
+    popup.className = "yms-popup"
+    popup.innerHTML = `<input type="time" value="${cur}" class="yms-time-input">
+      <button class="yms-ok">✔</button>
+      <button class="yms-cl">✕</button>`
+    ymsSpan.closest("td").appendChild(popup)
+    popup.querySelector(".yms-time-input").focus()
+
+    const close = () => popup.remove()
+    popup.querySelector(".yms-cl").onclick = close
+
+    const save = async () => {
+      const val = popup.querySelector(".yms-time-input").value  // "HH:MM"
+      close()
+      if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
+      manualMap[id][field] = val
+      render()
+      setSyncStatus("loading","Salvando…")
+      try {
+        await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, { route_id:id, [field]:val, updated_at:new Date().toISOString() })
+        setSyncStatus("ok","Online")
+        showToast(`✅ Horário salvo: ${val}`,"ok")
+      } catch(err){ setSyncStatus("err","Erro"); showToast("❌ Erro ao salvar","err"); console.error(err) }
+    }
+    popup.querySelector(".yms-ok").onclick = save
+    popup.querySelector(".yms-time-input").addEventListener("keydown", ev => {
+      if (ev.key==="Enter") save()
+      if (ev.key==="Escape") close()
+    })
+    // Click fora fecha
+    setTimeout(() => document.addEventListener("click", function handler(ev){
+      if (!popup.contains(ev.target) && ev.target !== ymsSpan){
+        close(); document.removeEventListener("click", handler)
+      }
+    }), 100)
+    return
+  }
+
   const wrap = e.target.closest(".placa-wrap")
   if (wrap && !e.target.closest(".rtgl")) {
     // Fecha outros abertos
@@ -986,7 +1066,12 @@ function startPolling() {
       const nm = {}
       if (data) for (const [k,val] of Object.entries(data)) nm[val.route_id||k] = val
       const h = JSON.stringify(nm)
-      if (h !== lastManualHash) { manualMap = nm; lastManualHash = h; render() }
+      if (h !== lastManualHash) {
+        manualMap = nm
+        lastManualHash = h
+        injectManualPlates()
+        render()
+      }
       setSyncStatus("ok","Online")
     } catch(e) { setSyncStatus("err","Offline"); console.warn("Poll:",e) }
   }, POLL_MS)
@@ -995,8 +1080,11 @@ function startPolling() {
 // ── Filter / process ─────────────────────────────────────────────────
 function applyFilter() {
   selectedDate = $("datePicker").value
-  processData(allRows)
+  processData(allRows)   // calls render() internally
+  // inject manual plates and re-render if any were added
+  const before = filtered.length
   injectManualPlates()
+  if (filtered.length !== before) render()
 }
 
 /**
@@ -1128,13 +1216,23 @@ function render() {
     if (m.status_patio==="Descarga iniciada") descarga++
     if (m.status_patio==="Não Chegou")        naoChegou++
     totalPacotes += parseInt(row.pacotes)||0
+
+    // YMS IN/OUT: CSV tem prioridade; manual como fallback
+    const ymsInVal  = hhmm(row.ymsIn)  !== "—" ? hhmm(row.ymsIn)  : (m.yms_in_manual  || "")
+    const ymsOutVal = hhmm(row.ymsOut) !== "—" ? hhmm(row.ymsOut) : (m.yms_out_manual || "")
+
+    const mkTimeCell = (val, field) => {
+      if (val) return `<span class="yms-val" data-id="${id}" data-field="${field}" title="Clique para editar">${val}</span>`
+      return `<span class="yms-edit" data-id="${id}" data-field="${field}" title="Inserir horário">—</span>`
+    }
+
     html += `<tr class="${cls}">
   <td><b>${i+1}</b></td>
   <td class="td-doca">${mkSel(DOCAS, m.doca, id,"doca")}</td>
   <td class="td-rev">${mkReversaBtn(id, m)}</td>
   <td class="td-placa">${placaHTML(row.placa, m, id, row.motorista)}</td>
-  <td>${hhmm(row.ymsIn)}</td>
-  <td>${hhmm(row.ymsOut)}</td>
+  <td class="td-yms">${mkTimeCell(ymsInVal,  "yms_in_manual")}</td>
+  <td class="td-yms">${mkTimeCell(ymsOutVal, "yms_out_manual")}</td>
   <td>${row.pacotes||"—"}</td>
   <td class="td-status">${mkSel(STATUSES,m.status_patio,id,"status_patio")}</td>
   <td class="td-perfil">${mkSel(PERFIS, m.perfil, id,"perfil")}</td>
