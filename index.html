@@ -755,6 +755,23 @@ $("tbody").addEventListener("change", async e => {
 
 // Tooltip da transportadora: toque no celular abre/fecha
 $("tbody").addEventListener("click", async e => {
+  // ── Excluir placa manual ─────────────────────────────────────────
+  const delBtn = e.target.closest(".del-manual")
+  if (delBtn) {
+    const id = delBtn.dataset.id
+    if (!confirm(`Excluir placa manual ${id.split("_")[1]}?`)) return
+    filtered = filtered.filter(r => r.id !== id)
+    delete manualMap[id]
+    render()
+    setSyncStatus("loading","Salvando…")
+    try {
+      await rtdbDelete(`lh_monitoramento/${encodeKey(id)}`)
+      setSyncStatus("ok","Online")
+      showToast("🗑 Placa excluída","err")
+    } catch(err){ setSyncStatus("err","Erro"); showToast("❌ Erro ao excluir","err"); console.error(err) }
+    return
+  }
+
   // ── YMS IN / OUT manual ───────────────────────────────────────────
   const ymsSpan = e.target.closest(".yms-edit, .yms-val")
   if (ymsSpan) {
@@ -1227,7 +1244,7 @@ function render() {
     }
 
     html += `<tr class="${cls}">
-  <td><b>${i+1}</b></td>
+  <td><b>${i+1}</b>${row._manual ? `<br><span class="del-manual" data-id="${id}" title="Excluir placa manual" style="font-size:9px;cursor:pointer;color:#f87171;font-weight:700;letter-spacing:.3px;">✕ excluir</span>` : ""}</td>
   <td class="td-doca">${mkSel(DOCAS, m.doca, id,"doca")}</td>
   <td class="td-rev">${mkReversaBtn(id, m)}</td>
   <td class="td-placa">${placaHTML(row.placa, m, id, row.motorista)}</td>
