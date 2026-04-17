@@ -414,9 +414,7 @@ td.td-yms{ position:relative; }
 tr.ant td.td-status select{ background:transparent !important; color:inherit !important;
   border-color:rgba(255,255,255,.25) !important; }
 
-/* Antecipada CONCLUÍDA: sobrescreve roxo com verde igual ao normal */
-[data-theme="dark"]  tr.ant.st-Concluida td          { background:var(--st-concluida-bg) !important; color:var(--st-concluida-text) !important; }
-[data-theme="light"] tr.ant.st-Concluida td          { background:var(--st-concluida-bg) !important; color:var(--st-concluida-text) !important; }
+/* Antecipada CONCLUÍDA: verde só na célula de status, demais células mantêm roxo */
 [data-theme="dark"]  tr.ant.st-Concluida td.td-status{ background:var(--st-concluida-bg) !important; color:var(--st-concluida-text) !important; }
 [data-theme="light"] tr.ant.st-Concluida td.td-status{ background:var(--st-concluida-bg) !important; color:var(--st-concluida-text) !important; }
 tr.ant.st-Concluida td.td-status select{ background:transparent !important; color:inherit !important;
