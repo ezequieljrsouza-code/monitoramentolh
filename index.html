@@ -535,6 +535,9 @@ tbody tr:hover td{background:var(--bg4) !important}
     <div class="date-group2" id="date2Group" style="display:none">
       <label>🟣</label>
       <input type="date" id="datePicker2">
+      <span id="btnAntEdit" title="Editar seleção de placas"
+        style="font-size:10px;font-weight:700;color:#a78bfa;cursor:pointer;
+        border-bottom:1px dashed #a78bfa;white-space:nowrap;">editar</span>
     </div>
 
     <div class="btn-group">
@@ -663,6 +666,46 @@ tbody tr:hover td{background:var(--bg4) !important}
     </div>
   </div>
 
+  <!-- Modal selecionar antecipadas -->
+  <div id="modalAntecipad" style="
+    display:none;position:fixed;inset:0;z-index:999;
+    background:rgba(0,0,0,.6);backdrop-filter:blur(3px);
+    align-items:flex-start;justify-content:center;padding-top:40px;">
+    <div style="
+      background:var(--bg2);border:1px solid #7c3aed55;border-radius:14px;
+      padding:20px 20px;width:min(420px,95vw);box-shadow:var(--shadow-lg);
+      max-height:80vh;display:flex;flex-direction:column;gap:12px;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;
+        color:var(--text);letter-spacing:.5px;">
+        🟣 Selecionar Carretas Antecipadas
+      </div>
+      <div style="font-size:11px;color:var(--text2);">
+        Escolha quais placas da data <b id="ant2DateLabel"></b> devem aparecer como antecipadas no painel.
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button id="btnAntSelectAll"
+          style="border:1px solid var(--border);background:var(--bg3);color:var(--text2);
+          border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;
+          font-family:'Barlow',sans-serif;cursor:pointer;">✔ Todas</button>
+        <button id="btnAntClearAll"
+          style="border:1px solid var(--border);background:var(--bg3);color:var(--text2);
+          border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;
+          font-family:'Barlow',sans-serif;cursor:pointer;">✕ Nenhuma</button>
+      </div>
+      <div id="antListWrap" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
+        <button id="btnAntCancel"
+          style="border:1px solid var(--border);background:none;color:var(--text2);
+          border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;
+          font-family:'Barlow',sans-serif;cursor:pointer;">Cancelar</button>
+        <button id="btnAntConfirm"
+          style="border:none;background:#7c3aed;color:#fff;
+          border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;
+          font-family:'Barlow',sans-serif;cursor:pointer;">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
 </div><!-- .app -->
 
 <script>
@@ -674,8 +717,9 @@ const POLL_MS      = 10000
 // ── State ────────────────────────────────────────────────────────────
 let allRows = [], filtered = [], manualMap = {}
 let selectedDate    = todayStr()
-let selectedDate2   = ""      // segunda data para carretas antecipadas
+let selectedDate2   = ""
 let date2Active     = false
+let antecipSel      = new Set()   // Route IDs selecionados para mostrar como antecipadas
 let pollTimer       = null
 let toastTimer      = null
 let lastManualHash  = ""
@@ -707,19 +751,88 @@ $("btnDate2Toggle").addEventListener("click", () => {
   date2Active = !date2Active
   $("btnDate2Toggle").classList.toggle("on", date2Active)
   $("date2Group").style.display = date2Active ? "flex" : "none"
-  if (date2Active && !$("datePicker2").value) {
-    // Default: day before selectedDate
-    const d = new Date(selectedDate + "T12:00:00")
-    d.setDate(d.getDate() - 1)
-    $("datePicker2").value = d.toISOString().substring(0,10)
+  if (date2Active) {
+    if (!$("datePicker2").value) {
+      const d = new Date(selectedDate + "T12:00:00")
+      d.setDate(d.getDate() - 1)
+      $("datePicker2").value = d.toISOString().substring(0,10)
+    }
+    selectedDate2 = $("datePicker2").value
+    openAntModal()
+  } else {
+    selectedDate2 = ""
+    antecipSel.clear()
+    applyFilter()
+    saveDate2Config()
   }
-  selectedDate2 = date2Active ? $("datePicker2").value : ""
-  applyFilter()
-  // Persist date2 state in Firebase
-  saveDate2Config()
 })
+
 $("datePicker2").addEventListener("change", () => {
   selectedDate2 = $("datePicker2").value
+  antecipSel.clear()
+  openAntModal()
+})
+
+$("btnAntEdit").addEventListener("click", () => openAntModal())
+
+// ── Modal antecipadas ─────────────────────────────────────────────
+function openAntModal() {
+  if (!selectedDate2) return
+  // Coleta placas disponíveis na data2 do CSV
+  const candidates = []
+  for (const src of allRows) {
+    const placa   = v(src,"Veículo de carga 1")||v(src,"Veículo de carga 2")
+    const destino = v(src,"Destino").toUpperCase()
+    const eta     = normalizeDate(v(src,"Destino ETA")).substring(0,10)
+    const motor   = v(src,"Motorista").toUpperCase()
+    const id      = v(src,"Route ID")
+    if (destino !== "SPA1") continue
+    if (motor.includes("RODOPENHA")) continue
+    if (!placa||placa.toLowerCase().includes("sem placa")) continue
+    if (eta !== selectedDate2) continue
+    candidates.push({ id, placa, motor })
+  }
+
+  $("ant2DateLabel").textContent = selectedDate2
+  const wrap = $("antListWrap")
+  wrap.innerHTML = candidates.length
+    ? candidates.map(c => `
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;
+        border-radius:8px;background:var(--bg3);cursor:pointer;font-family:'Barlow',sans-serif;">
+        <input type="checkbox" data-id="${c.id}" ${antecipSel.has(c.id)?"checked":""}
+          style="width:15px;height:15px;accent-color:#7c3aed;cursor:pointer;">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;
+          color:var(--text);letter-spacing:.3px;">${c.placa}</span>
+        <span style="font-size:10px;color:var(--text2);font-weight:600;">${c.motor}</span>
+      </label>`).join("")
+    : `<div style="padding:16px;text-align:center;color:var(--text3);font-size:13px;">
+        Nenhuma placa encontrada para ${selectedDate2}.</div>`
+
+  $("modalAntecipad").style.display = "flex"
+}
+
+$("btnAntCancel").addEventListener("click", () => {
+  $("modalAntecipad").style.display = "none"
+  if (antecipSel.size === 0) {
+    date2Active = false
+    $("btnDate2Toggle").classList.remove("on")
+    $("date2Group").style.display = "none"
+  }
+})
+
+$("btnAntSelectAll").addEventListener("click", () => {
+  $("antListWrap").querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = true)
+})
+$("btnAntClearAll").addEventListener("click", () => {
+  $("antListWrap").querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = false)
+})
+
+$("btnAntConfirm").addEventListener("click", async () => {
+  antecipSel.clear()
+  $("antListWrap").querySelectorAll("input[type=checkbox]:checked").forEach(cb => {
+    antecipSel.add(cb.dataset.id)
+  })
+  $("modalAntecipad").style.display = "none"
   applyFilter()
   saveDate2Config()
 })
@@ -729,6 +842,7 @@ async function saveDate2Config() {
     await rtdbPatch("lh_config", {
       date2_active: date2Active,
       date2_value:  selectedDate2,
+      antecip_sel:  [...antecipSel],
       updated_at:   new Date().toISOString()
     })
   } catch(e) { console.warn("Config save:", e) }
@@ -740,6 +854,7 @@ async function loadDate2Config() {
     if (cfg && cfg.date2_active) {
       date2Active   = true
       selectedDate2 = cfg.date2_value || ""
+      antecipSel    = new Set(cfg.antecip_sel || [])
       $("btnDate2Toggle").classList.add("on")
       $("date2Group").style.display = "flex"
       if (selectedDate2) $("datePicker2").value = selectedDate2
@@ -1219,7 +1334,7 @@ function processData(rows) {
     if (!placa||placa.toLowerCase().includes("sem placa"))   continue
 
     const isMain = etaDate === selectedDate
-    const isAnt  = date2Active && selectedDate2 && etaDate === selectedDate2
+    const isAnt  = date2Active && selectedDate2 && etaDate === selectedDate2 && antecipSel.has(id)
 
     if (!isMain && !isAnt) continue
 
