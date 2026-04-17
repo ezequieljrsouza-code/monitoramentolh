@@ -152,7 +152,7 @@ tbody td,td select,#toast{
 /* ── KPI cards ──────────────────────────────────────────────────── */
 .dashboard{
   display:grid;
-  grid-template-columns:repeat(5,1fr);
+  grid-template-columns:repeat(6,1fr);
   gap:10px;
   margin-bottom:12px;
 }
@@ -173,6 +173,7 @@ tbody td,td select,#toast{
 .card-desc    .card-value{color:var(--st-descarga)}
 .card-nc      .card-value{color:var(--st-naochegou)}
 .card-pkg     .card-value{color:#0ea5e9}
+.card-ag      .card-value{color:var(--st-aguardando)}
 
 /* ── Top bar (controles — fora do print) ────────────────────────── */
 .topbar{
@@ -586,6 +587,10 @@ tbody tr:hover td{background:var(--bg4) !important}
       <div class="card card-nc">
         <div class="card-label">Não Chegou</div>
         <div class="card-value" id="kpiNaoChegou">0</div>
+      </div>
+      <div class="card card-ag">
+        <div class="card-label">Aguardando Doca</div>
+        <div class="card-value" id="kpiAguardando">0</div>
       </div>
       <div class="card card-pkg">
         <div class="card-label">Total Pacotes</div>
@@ -1352,15 +1357,22 @@ function processData(rows) {
     filtered.push({ id, placa, ymsIn, ymsOut, pacotes, motorista, _antecipada: isAnt && !isMain })
   }
 
+  // Helper: resolve effective ymsIn (CSV value or manual override)
+  const effectiveIn = r => {
+    const csv = hhmm(r.ymsIn)
+    if (csv !== "—") return csv
+    return manualMap[r.id]?.yms_in_manual || ""
+  }
+
   filtered.sort((a,b) => {
     // Grupos separados: normais primeiro, antecipadas depois
     if (!!a._antecipada !== !!b._antecipada) return a._antecipada ? 1 : -1
     // Dentro de cada grupo: ordem por YMS IN crescente, vazios por último
-    const ae = !a.ymsIn||!a.ymsIn.trim(), be = !b.ymsIn||!b.ymsIn.trim()
-    if (ae && be) return 0
-    if (ae) return 1
-    if (be) return -1
-    return a.ymsIn.localeCompare(b.ymsIn)
+    const ae = effectiveIn(a), be = effectiveIn(b)
+    if (!ae && !be) return 0
+    if (!ae) return 1
+    if (!be) return -1
+    return ae.localeCompare(be)
   })
   render()
 
@@ -1433,7 +1445,7 @@ function placaHTML(placa, m, id, motorista, antecipada) {
 
 // ── Render ───────────────────────────────────────────────────────────
 function render() {
-  let html="", concluidas=0, descarga=0, naoChegou=0, totalPacotes=0
+  let html="", concluidas=0, descarga=0, naoChegou=0, totalPacotes=0, aguardando=0
   for (let i=0; i<filtered.length; i++) {
     const row = filtered[i]
     const id  = row.id
@@ -1442,6 +1454,7 @@ function render() {
     if (m.status_patio==="Concluída")         concluidas++
     if (m.status_patio==="Descarga iniciada") descarga++
     if (m.status_patio==="Não Chegou")        naoChegou++
+    if (m.status_patio==="Aguardando Doca")   aguardando++
     totalPacotes += parseInt(row.pacotes)||0
 
     // YMS IN/OUT: CSV tem prioridade; manual como fallback
@@ -1475,6 +1488,7 @@ function render() {
   $("kpiDescarga").textContent  = descarga
   $("kpiNaoChegou").textContent = naoChegou
   $("kpiPacotes").textContent   = totalPacotes.toLocaleString("pt-BR")
+  $("kpiAguardando").textContent= aguardando
 }
 
 // ── Clear all ────────────────────────────────────────────────────────
