@@ -1353,11 +1353,13 @@ function processData(rows) {
   }
 
   filtered.sort((a,b) => {
-    // Antecipadas aparecem no fim
-    if (a._antecipada !== b._antecipada) return a._antecipada ? 1 : -1
+    // Grupos separados: normais primeiro, antecipadas depois
+    if (!!a._antecipada !== !!b._antecipada) return a._antecipada ? 1 : -1
+    // Dentro de cada grupo: ordem por YMS IN crescente, vazios por último
     const ae = !a.ymsIn||!a.ymsIn.trim(), be = !b.ymsIn||!b.ymsIn.trim()
-    if (ae&&be) return 0
-    if (ae) return 1; if (be) return -1
+    if (ae && be) return 0
+    if (ae) return 1
+    if (be) return -1
     return a.ymsIn.localeCompare(b.ymsIn)
   })
   render()
