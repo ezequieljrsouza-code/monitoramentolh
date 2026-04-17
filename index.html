@@ -407,7 +407,7 @@ td.td-yms{ position:relative; }
 [data-theme="light"] tr.ant td{ background:#f3f0ff !important; color:#5b21b6 !important; }
 
 /* Status das antecipadas: roxo por padrão */
-[data-theme="dark"]  tr.ant td.td-status{ background:#FF6B6B !important; color:#ddd6fe !important; }
+[data-theme="dark"]  tr.ant td.td-status{ background:#3b1f6b !important; color:#ddd6fe !important; }
 [data-theme="light"] tr.ant td.td-status{ background:#7c3aed !important; color:#fff    !important; }
 
 /* Select dentro do status das antecipadas: cor roxa */
@@ -418,6 +418,12 @@ tr.ant td.td-status select{ background:transparent !important; color:inherit !im
 [data-theme="dark"]  tr.ant.st-Concluida td.td-status{ background:var(--st-concluida-bg) !important; color:var(--st-concluida-text) !important; }
 [data-theme="light"] tr.ant.st-Concluida td.td-status{ background:var(--st-concluida-bg) !important; color:var(--st-concluida-text) !important; }
 tr.ant.st-Concluida td.td-status select{ background:transparent !important; color:inherit !important;
+  border-color:rgba(0,0,0,.15) !important; }
+
+/* Antecipada NÃO CHEGOU: célula status em vermelho claro (igual ao normal) */
+[data-theme="dark"]  tr.ant.st-NaoChegou td.td-status{ background:var(--st-naochegou-bg) !important; color:var(--st-naochegou-text) !important; }
+[data-theme="light"] tr.ant.st-NaoChegou td.td-status{ background:var(--st-naochegou-bg) !important; color:var(--st-naochegou-text) !important; }
+tr.ant.st-NaoChegou td.td-status select{ background:transparent !important; color:inherit !important;
   border-color:rgba(0,0,0,.15) !important; }
 
 .antecip-badge{
