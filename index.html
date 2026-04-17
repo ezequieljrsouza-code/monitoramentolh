@@ -380,6 +380,38 @@ td.td-yms{ position:relative; }
 }
 .yms-popup .yms-ok { background:var(--accent);color:#fff; }
 .yms-popup .yms-cl { background:var(--bg4);color:var(--text2); }
+/* ── Segunda data (carretas antecipadas) ────────────────────────── */
+.date-group2{
+  display:flex;align-items:center;gap:6px;
+  background:var(--bg3);border-radius:8px;padding:6px 10px;
+  border:1.5px solid #7c3aed55;
+}
+.date-group2 label{font-size:11px;font-weight:700;color:#a78bfa;white-space:nowrap}
+#datePicker2{
+  border:none;background:transparent;color:var(--text);
+  font-size:13px;font-family:'Barlow',sans-serif;font-weight:600;
+  cursor:pointer;outline:none;
+}
+.btn-date2-toggle{
+  border:1px solid var(--border);background:var(--bg3);color:var(--text3);
+  border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;
+  font-family:'Barlow',sans-serif;cursor:pointer;white-space:nowrap;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.btn-date2-toggle.on{background:#4c1d95;border-color:#7c3aed;color:#fff}
+.btn-date2-toggle:hover:not(.on){border-color:#7c3aed;color:#a78bfa}
+
+/* Linha de carreta antecipada — destaque roxo suave */
+[data-theme="dark"]  tr.ant td{ background:#2d1b69 !important; color:#ddd6fe !important; }
+[data-theme="light"] tr.ant td{ background:#ede9fe !important; color:#4c1d95 !important; }
+[data-theme="dark"]  tr.ant td.td-status{ background:#4c1d95 !important; color:#ddd6fe !important; }
+[data-theme="light"] tr.ant td.td-status{ background:#7c3aed !important; color:#fff    !important; }
+.antecip-badge{
+  display:inline-block;font-size:7px;font-weight:800;letter-spacing:.4px;
+  text-transform:uppercase;padding:1px 5px;border-radius:8px;
+  background:#7c3aed;color:#fff;margin-top:1px;white-space:nowrap;
+}
+
 td.td-doca, td.td-status, td.td-perfil { text-align:center !important; }
 td.td-doca select, td.td-perfil select, td.td-status select {
   text-align:center; text-align-last:center;
@@ -497,6 +529,12 @@ tbody tr:hover td{background:var(--bg4) !important}
     <div class="date-group">
       <label>📅</label>
       <input type="date" id="datePicker">
+    </div>
+
+    <button id="btnDate2Toggle" class="btn-date2-toggle" title="Ativar segunda data para carretas antecipadas">🗓 +data</button>
+    <div class="date-group2" id="date2Group" style="display:none">
+      <label>🟣</label>
+      <input type="date" id="datePicker2">
     </div>
 
     <div class="btn-group">
@@ -636,6 +674,8 @@ const POLL_MS      = 10000
 // ── State ────────────────────────────────────────────────────────────
 let allRows = [], filtered = [], manualMap = {}
 let selectedDate    = todayStr()
+let selectedDate2   = ""      // segunda data para carretas antecipadas
+let date2Active     = false
 let pollTimer       = null
 let toastTimer      = null
 let lastManualHash  = ""
@@ -661,6 +701,51 @@ $("btnUpload").addEventListener("click",   handleUpload)
 $("btnPrint").addEventListener ("click",   exportImg)
 $("btnClear").addEventListener ("click",   clearAll)
 $("datePicker").addEventListener("change", applyFilter)
+
+// ── Segunda data (antecipadas) ────────────────────────────────────
+$("btnDate2Toggle").addEventListener("click", () => {
+  date2Active = !date2Active
+  $("btnDate2Toggle").classList.toggle("on", date2Active)
+  $("date2Group").style.display = date2Active ? "flex" : "none"
+  if (date2Active && !$("datePicker2").value) {
+    // Default: day before selectedDate
+    const d = new Date(selectedDate + "T12:00:00")
+    d.setDate(d.getDate() - 1)
+    $("datePicker2").value = d.toISOString().substring(0,10)
+  }
+  selectedDate2 = date2Active ? $("datePicker2").value : ""
+  applyFilter()
+  // Persist date2 state in Firebase
+  saveDate2Config()
+})
+$("datePicker2").addEventListener("change", () => {
+  selectedDate2 = $("datePicker2").value
+  applyFilter()
+  saveDate2Config()
+})
+
+async function saveDate2Config() {
+  try {
+    await rtdbPatch("lh_config", {
+      date2_active: date2Active,
+      date2_value:  selectedDate2,
+      updated_at:   new Date().toISOString()
+    })
+  } catch(e) { console.warn("Config save:", e) }
+}
+
+async function loadDate2Config() {
+  try {
+    const cfg = await rtdbGet("lh_config")
+    if (cfg && cfg.date2_active) {
+      date2Active   = true
+      selectedDate2 = cfg.date2_value || ""
+      $("btnDate2Toggle").classList.add("on")
+      $("date2Group").style.display = "flex"
+      if (selectedDate2) $("datePicker2").value = selectedDate2
+    }
+  } catch(e) { console.warn("Config load:", e) }
+}
 
 // ── Placa manual ──────────────────────────────────────────────────────
 const modal = $("modalPlaca")
@@ -889,6 +974,7 @@ $("tbody").addEventListener("click", async e => {
 ;(async () => {
   try {
     loading("Carregando dados da nuvem…")
+    await loadDate2Config()
     await loadCloudCSV()
     await loadManual()
     applyFilter()
@@ -1116,7 +1202,7 @@ function applyFilter() {
 function processData(rows) {
   if (!rows?.length) { filtered=[]; render(); return }
   filtered = []
-  const autoUpdates = []   // {id} que precisam ser marcados como Concluída
+  const autoUpdates = []
 
   for (const src of rows) {
     const placa     = v(src,"Veículo de carga 1")||v(src,"Veículo de carga 2")
@@ -1129,14 +1215,17 @@ function processData(rows) {
     const id        = v(src,"Route ID")
 
     if (destino !== "SPA1")                                  continue
-    if (etaDate !== selectedDate)                            continue
     if (motorista.includes("RODOPENHA"))                     continue
     if (!placa||placa.toLowerCase().includes("sem placa"))   continue
 
-    // ── Auto-Concluída: YMS OUT preenchido → marca Concluída ────────
+    const isMain = etaDate === selectedDate
+    const isAnt  = date2Active && selectedDate2 && etaDate === selectedDate2
+
+    if (!isMain && !isAnt) continue
+
+    // Auto-Concluída: YMS OUT preenchido
     if (ymsOut && ymsOut.trim()) {
       const cur = manualMap[id]?.status_patio || ""
-      // Só auto-marca se ainda não foi definido manualmente como outra coisa
       if (cur !== "Concluída") {
         if (!manualMap[id]) manualMap[id] = {}
         manualMap[id].status_patio = "Concluída"
@@ -1145,10 +1234,12 @@ function processData(rows) {
       }
     }
 
-    filtered.push({ id, placa, ymsIn, ymsOut, pacotes, motorista })
+    filtered.push({ id, placa, ymsIn, ymsOut, pacotes, motorista, _antecipada: isAnt && !isMain })
   }
 
   filtered.sort((a,b) => {
+    // Antecipadas aparecem no fim
+    if (a._antecipada !== b._antecipada) return a._antecipada ? 1 : -1
     const ae = !a.ymsIn||!a.ymsIn.trim(), be = !b.ymsIn||!b.ymsIn.trim()
     if (ae&&be) return 0
     if (ae) return 1; if (be) return -1
@@ -1156,13 +1247,10 @@ function processData(rows) {
   })
   render()
 
-  // Persiste as auto-marcações no Firebase em background (sem bloquear a UI)
   if (autoUpdates.length) {
     autoUpdates.forEach(id => {
       rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, {
-        route_id: id,
-        status_patio: "Concluída",
-        updated_at: new Date().toISOString()
+        route_id: id, status_patio: "Concluída", updated_at: new Date().toISOString()
       }).catch(e => console.warn("Auto-status save error:", e))
     })
   }
@@ -1195,7 +1283,7 @@ function mkReversaBtn(id, m) {
 }
 
 // Placa: nome + tooltip transportadora + mini-toggles MP / PCT + pílula
-function placaHTML(placa, m, id, motorista) {
+function placaHTML(placa, m, id, motorista, antecipada) {
   const rtype = m.reversa_tipo || "—"
   const mpOn  = rtype === "MP"
   const pkOn  = rtype === "Pacotes"
@@ -1213,9 +1301,14 @@ function placaHTML(placa, m, id, motorista) {
     ? `<span class="transp-tip">🚛 ${motorista}</span>`
     : ""
 
+  const antBadge = antecipada
+    ? `<span class="antecip-badge">🟣 antecipada</span>`
+    : ""
+
   return `<div class="placa-wrap" data-placa-id="${id}">
     ${tip}
     <span class="placa">${placa}</span>
+    ${antBadge}
     ${toggles}
     ${tag}
   </div>`
@@ -1228,7 +1321,7 @@ function render() {
     const row = filtered[i]
     const id  = row.id
     const m   = manualMap[id]||{doca:"-",status_patio:"Não Chegou",perfil:"Granel",reversa_hora:"",reversa_tipo:"—"}
-    const cls = CLS_MAP[m.status_patio]||"st-NaoChegou"
+    const cls = (row._antecipada ? "ant " : "") + (CLS_MAP[m.status_patio]||"st-NaoChegou")
     if (m.status_patio==="Concluída")         concluidas++
     if (m.status_patio==="Descarga iniciada") descarga++
     if (m.status_patio==="Não Chegou")        naoChegou++
@@ -1247,7 +1340,7 @@ function render() {
   <td><b>${i+1}</b>${row._manual ? `<br><span class="del-manual" data-id="${id}" title="Excluir placa manual" style="font-size:9px;cursor:pointer;color:#f87171;font-weight:700;letter-spacing:.3px;">✕ excluir</span>` : ""}</td>
   <td class="td-doca">${mkSel(DOCAS, m.doca, id,"doca")}</td>
   <td class="td-rev">${mkReversaBtn(id, m)}</td>
-  <td class="td-placa">${placaHTML(row.placa, m, id, row.motorista)}</td>
+  <td class="td-placa">${placaHTML(row.placa, m, id, row.motorista, row._antecipada)}</td>
   <td class="td-yms">${mkTimeCell(ymsInVal,  "yms_in_manual")}</td>
   <td class="td-yms">${mkTimeCell(ymsOutVal, "yms_out_manual")}</td>
   <td>${row.pacotes||"—"}</td>
