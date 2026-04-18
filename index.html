@@ -1390,7 +1390,18 @@ function processData(rows) {
         if (!manualMap[id]) manualMap[id] = {}
         manualMap[id].status_patio = "Concluída"
         manualMap[id].route_id     = id
-        autoUpdates.push(id)
+        autoUpdates.push({ id, status: "Concluída" })
+      }
+    }
+    // Auto-Descarga iniciada: YMS IN preenchido mas sem YMS OUT
+    else if (ymsIn && ymsIn.trim()) {
+      const cur = manualMap[id]?.status_patio || ""
+      // Só muda se ainda está em Não Chegou (não sobrescreve mudanças manuais)
+      if (cur === "Não Chegou" || cur === "") {
+        if (!manualMap[id]) manualMap[id] = {}
+        manualMap[id].status_patio = "Descarga iniciada"
+        manualMap[id].route_id     = id
+        autoUpdates.push({ id, status: "Descarga iniciada" })
       }
     }
 
@@ -1417,9 +1428,9 @@ function processData(rows) {
   render()
 
   if (autoUpdates.length) {
-    autoUpdates.forEach(id => {
+    autoUpdates.forEach(({ id, status }) => {
       rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, {
-        route_id: id, status_patio: "Concluída", updated_at: new Date().toISOString()
+        route_id: id, status_patio: status, updated_at: new Date().toISOString()
       }).catch(e => console.warn("Auto-status save error:", e))
     })
   }
