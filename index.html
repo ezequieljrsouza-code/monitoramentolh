@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR" data-theme="dark">
 <head>
 <meta charset="UTF-8">
@@ -532,7 +531,6 @@ tbody tr:hover td{background:var(--bg4) !important}
   .card-label{font-size:9px}
 }
 </style>
-
 </head>
 <body>
 
@@ -542,128 +540,120 @@ tbody tr:hover td{background:var(--bg4) !important}
 <div class="app">
 
   <!-- TOP BAR: controles + status + sync/tema -->
-
   <div class="topbar">
     <label class="file-label">
       📂 <span id="fileName">Selecionar CSV / XLSX…</span>
       <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
     </label>
 
-```
-<div class="date-group">
-  <label>📅</label>
-  <input type="date" id="datePicker">
-</div>
+    <div class="date-group">
+      <label>📅</label>
+      <input type="date" id="datePicker">
+    </div>
 
-<button id="btnDate2Toggle" class="btn-date2-toggle" title="Ativar segunda data para carretas antecipadas">🗓 +data</button>
-<div class="date-group2" id="date2Group" style="display:none">
-  <label>🟣</label>
-  <input type="date" id="datePicker2">
-  <span id="btnAntEdit" title="Editar seleção de placas"
-    style="font-size:10px;font-weight:700;color:#a78bfa;cursor:pointer;
-    border-bottom:1px dashed #a78bfa;white-space:nowrap;">editar</span>
-</div>
+    <button id="btnDate2Toggle" class="btn-date2-toggle" title="Ativar segunda data para carretas antecipadas">🗓 +data</button>
+    <div class="date-group2" id="date2Group" style="display:none">
+      <label>🟣</label>
+      <input type="date" id="datePicker2">
+      <span id="btnAntEdit" title="Editar seleção de placas"
+        style="font-size:10px;font-weight:700;color:#a78bfa;cursor:pointer;
+        border-bottom:1px dashed #a78bfa;white-space:nowrap;">editar</span>
+    </div>
 
-<div class="btn-group">
-  <button id="btnUpload" class="btn btn-upload">⬆ Enviar</button>
-  <button id="btnPrint"  class="btn btn-print">📸</button>
-  <button id="btnClear"  class="btn btn-clear">🗑</button>
-</div>
+    <div class="btn-group">
+      <button id="btnUpload" class="btn btn-upload">⬆ Enviar</button>
+      <button id="btnPrint"  class="btn btn-print">📸</button>
+      <button id="btnClear"  class="btn btn-clear">🗑</button>
+    </div>
 
-<span id="uploadStatus">—</span>
+    <span id="uploadStatus">—</span>
 
-<div class="topbar-right">
-  <div class="sync-badge">
-    <div class="sync-dot" id="syncDot"></div>
-    <span id="syncLabel">Online</span>
-  </div>
-  <button class="theme-toggle" id="btnTheme" title="Alternar tema">🌙</button>
-</div>
-```
-
+    <div class="topbar-right">
+      <div class="sync-badge">
+        <div class="sync-dot" id="syncDot"></div>
+        <span id="syncLabel">Online</span>
+      </div>
+      <button class="theme-toggle" id="btnTheme" title="Alternar tema">🌙</button>
+    </div>
   </div>
 
   <!-- HEADER + KPI (área do print) -->
-
   <div id="printArea">
 
-```
-<!-- Header -->
-<div class="header">
-  <div class="header-title">
-    🚛 Monitoramento LH SPA1
-    <small></small>
-    <span class="analyst"><span class="analyst-dot"></span>Analista: Ezequiel Miranda</span>
-  </div>
-</div>
+    <!-- Header -->
+    <div class="header">
+      <div class="header-title">
+        🚛 Monitoramento LH SPA1
+        <small></small>
+        <span class="analyst"><span class="analyst-dot"></span>Analista: Ezequiel Miranda</span>
+      </div>
+    </div>
 
-<!-- KPI Cards -->
-<div class="dashboard">
-  <div class="card card-total">
-    <div class="card-label">Total</div>
-    <div class="card-value" id="kpiTotal">0</div>
-  </div>
-  <div class="card card-ok">
-    <div class="card-label">Concluídas</div>
-    <div class="card-value" id="kpiConcluida">0</div>
-  </div>
-  <div class="card card-desc">
-    <div class="card-label">Descarga Iniciada</div>
-    <div class="card-value" id="kpiDescarga">0</div>
-  </div>
-  <div class="card card-nc">
-    <div class="card-label">Não Chegou</div>
-    <div class="card-value" id="kpiNaoChegou">0</div>
-  </div>
-  <div class="card card-ag">
-    <div class="card-label">Aguardando Doca</div>
-    <div class="card-value" id="kpiAguardando">0</div>
-  </div>
-  <div class="card card-pkg">
-    <div class="card-label">Total Pacotes</div>
-    <div class="card-value" id="kpiPacotes">0</div>
-  </div>
-</div>
+    <!-- KPI Cards -->
+    <div class="dashboard">
+      <div class="card card-total">
+        <div class="card-label">Total</div>
+        <div class="card-value" id="kpiTotal">0</div>
+      </div>
+      <div class="card card-ok">
+        <div class="card-label">Concluídas</div>
+        <div class="card-value" id="kpiConcluida">0</div>
+      </div>
+      <div class="card card-desc">
+        <div class="card-label">Descarga Iniciada</div>
+        <div class="card-value" id="kpiDescarga">0</div>
+      </div>
+      <div class="card card-nc">
+        <div class="card-label">Não Chegou</div>
+        <div class="card-value" id="kpiNaoChegou">0</div>
+      </div>
+      <div class="card card-ag">
+        <div class="card-label">Aguardando Doca</div>
+        <div class="card-value" id="kpiAguardando">0</div>
+      </div>
+      <div class="card card-pkg">
+        <div class="card-label">Total Pacotes</div>
+        <div class="card-value" id="kpiPacotes">0</div>
+      </div>
+    </div>
 
-<!-- Table -->
-<div class="table-wrap">
-  <div class="table-scroll">
-    <table>
-      <colgroup>
-        <col class="c-num"><col class="c-doca"><col class="c-rev">
-        <col class="c-placa"><col class="c-in"><col class="c-out">
-        <col class="c-pkg"><col class="c-status"><col class="c-perfil">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>#</th><th>DOCA</th><th>HR INICIO</th><th>PLACA</th>
-          <th>YMS IN</th><th>YMS OUT</th><th>PACOTES</th>
-          <th>STATUS</th><th>PERFIL</th>
-        </tr>
-      </thead>
-      <tbody id="tbody">
-        <tr><td colspan="9" class="empty-msg">Carregando dados…</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
+    <!-- Table -->
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <colgroup>
+            <col class="c-num"><col class="c-doca"><col class="c-rev">
+            <col class="c-placa"><col class="c-in"><col class="c-out">
+            <col class="c-pkg"><col class="c-status"><col class="c-perfil">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>#</th><th>DOCA</th><th>HR INICIO</th><th>PLACA</th>
+              <th>YMS IN</th><th>YMS OUT</th><th>PACOTES</th>
+              <th>STATUS</th><th>PERFIL</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="9" class="empty-msg">Carregando dados…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-<!-- Botão discreto para adicionar placa manual -->
-<div style="text-align:center;margin-top:8px;padding-bottom:4px;">
-  <button id="btnAddPlaca"
-    style="background:none;border:1px dashed var(--border);border-radius:8px;
-    color:var(--text3);font-size:11px;font-family:'Barlow',sans-serif;font-weight:600;
-    padding:5px 14px;cursor:pointer;transition:color .15s,border-color .15s;"
-    onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'"
-    onmouseout="this.style.color='var(--text3)';this.style.borderColor='var(--border)'"
-    title="Adicionar placa manualmente">+ placa manual</button>
-</div>
-```
+    <!-- Botão discreto para adicionar placa manual -->
+    <div style="text-align:center;margin-top:8px;padding-bottom:4px;">
+      <button id="btnAddPlaca"
+        style="background:none;border:1px dashed var(--border);border-radius:8px;
+        color:var(--text3);font-size:11px;font-family:'Barlow',sans-serif;font-weight:600;
+        padding:5px 14px;cursor:pointer;transition:color .15s,border-color .15s;"
+        onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'"
+        onmouseout="this.style.color='var(--text3)';this.style.borderColor='var(--border)'"
+        title="Adicionar placa manualmente">+ placa manual</button>
+    </div>
 
   </div><!-- #printArea -->
 
   <!-- Modal adicionar placa -->
-
   <div id="modalPlaca" style="
     display:none;position:fixed;inset:0;z-index:998;
     background:rgba(0,0,0,.55);backdrop-filter:blur(3px);
@@ -701,7 +691,6 @@ tbody tr:hover td{background:var(--bg4) !important}
   </div>
 
   <!-- Modal selecionar antecipadas -->
-
   <div id="modalAntecipad" style="
     display:none;position:fixed;inset:0;z-index:999;
     background:rgba(0,0,0,.6);backdrop-filter:blur(3px);
@@ -1385,6 +1374,15 @@ function processData(rows) {
 
     if (!isMain && !isAnt) continue
 
+    // ── Excluir da tabela do dia atual se YMS IN e YMS OUT foram no dia anterior ──
+    // Se ambos os horários existem e as datas de ATA/ATD são anteriores à data principal,
+    // a operação foi concluída antes do dia selecionado → não exibir
+    if (isMain && ymsIn && ymsOut) {
+      const inDate  = ymsIn.substring(0,10)
+      const outDate = ymsOut.substring(0,10)
+      if (inDate < selectedDate && outDate < selectedDate) continue
+    }
+
     // Auto-Concluída: YMS OUT preenchido
     if (ymsOut && ymsOut.trim()) {
       const cur = manualMap[id]?.status_patio || ""
@@ -1659,6 +1657,5 @@ async function exportImg() {
   done()
 }
 </script>
-
 </body>
 </html>
