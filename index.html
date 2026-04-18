@@ -1399,9 +1399,9 @@ function processData(rows) {
       // Só muda se ainda está em Não Chegou (não sobrescreve mudanças manuais)
       if (cur === "Não Chegou" || cur === "") {
         if (!manualMap[id]) manualMap[id] = {}
-        manualMap[id].status_patio = "Descarga iniciada"
+        manualMap[id].status_patio = "Aguardando Doca"
         manualMap[id].route_id     = id
-        autoUpdates.push({ id, status: "Descarga iniciada" })
+        autoUpdates.push({ id, status: "Aguardando Doca" })
       }
     }
 
