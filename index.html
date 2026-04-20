@@ -1066,21 +1066,18 @@ $("tbody").addEventListener("click", async e => {
     wrap.classList.toggle("tip-open")
   }
 
-  // ── HR INICIO button ──────────────────────────────────────────────
-  const btn = e.target.closest(".btn-reversa")
+  // ── HR INICIO button (inativo → registra hora + auto-status) ────────
+  const btn = e.target.closest(".btn-reversa:not(.active)")
   if (btn) {
     const id = btn.dataset.id
     if (!id) return
     if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
-    const already = manualMap[id].reversa_hora
-    const newTime = already ? "" : new Date().toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})
+    const newTime = new Date().toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})
     manualMap[id].reversa_hora = newTime
 
-    // Auto status: ao registrar hora → Descarga iniciada (se ainda não alterado manualmente)
-    // Ao apagar hora → não reverte o status
     let autoStatus = null
     const curStatus = manualMap[id].status_patio || "Não Chegou"
-    if (newTime && curStatus === "Não Chegou") {
+    if (curStatus === "Não Chegou") {
       autoStatus = "Descarga iniciada"
       manualMap[id].status_patio = autoStatus
     }
@@ -1094,8 +1091,61 @@ $("tbody").addEventListener("click", async e => {
       if (autoStatus) patch.status_patio = autoStatus
       await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, patch)
       setSyncStatus("ok", "Online")
-      showToast(newTime ? `⏱ Início: ${newTime}` : "🗑 Hora apagada", "ok")
+      showToast(`⏱ Início: ${newTime}`, "ok")
     } catch(err) { setSyncStatus("err","Erro"); showToast("❌ Erro ao salvar","err"); console.error(err) }
+    return
+  }
+
+  // ── HR INICIO editar horário manualmente ─────────────────────────
+  const editSpan = e.target.closest(".rev-time-edit")
+  if (editSpan) {
+    document.querySelectorAll(".yms-popup").forEach(p => p.remove())
+    const id  = editSpan.dataset.id
+    const cur = (manualMap[id]?.reversa_hora || "").replace(/[^0-9:]/g,"")
+    const popup = document.createElement("div")
+    popup.className = "yms-popup"
+    popup.innerHTML = `<input type="time" value="${cur}" class="yms-time-input">
+      <button class="yms-ok">✔</button>
+      <button class="yms-cl">✕</button>`
+    editSpan.closest("td").appendChild(popup)
+    popup.querySelector(".yms-time-input").focus()
+    const close = () => popup.remove()
+    popup.querySelector(".yms-cl").onclick = close
+    const save = async () => {
+      const val = popup.querySelector(".yms-time-input").value
+      close()
+      if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
+      manualMap[id].reversa_hora = val
+      render()
+      setSyncStatus("loading","Salvando…")
+      try {
+        await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, { route_id:id, reversa_hora:val, updated_at:new Date().toISOString() })
+        setSyncStatus("ok","Online"); showToast(`⏱ Início: ${val}`,"ok")
+      } catch(err){ setSyncStatus("err","Erro"); showToast("❌ Erro ao salvar","err"); console.error(err) }
+    }
+    popup.querySelector(".yms-ok").onclick = save
+    popup.querySelector(".yms-time-input").addEventListener("keydown", ev => {
+      if (ev.key==="Enter") save(); if (ev.key==="Escape") close()
+    })
+    setTimeout(() => document.addEventListener("click", function h(ev){
+      if (!popup.contains(ev.target) && ev.target !== editSpan){ close(); document.removeEventListener("click",h) }
+    }), 100)
+    return
+  }
+
+  // ── HR INICIO apagar ─────────────────────────────────────────────
+  const clearSpan = e.target.closest(".rev-clear")
+  if (clearSpan) {
+    const id = clearSpan.dataset.id
+    if (!id) return
+    if (!manualMap[id]) return
+    manualMap[id].reversa_hora = ""
+    render()
+    setSyncStatus("loading","Salvando…")
+    try {
+      await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, { route_id:id, reversa_hora:"", updated_at:new Date().toISOString() })
+      setSyncStatus("ok","Online"); showToast("🗑 Hora apagada","ok")
+    } catch(err){ setSyncStatus("err","Erro"); showToast("❌ Erro ao salvar","err"); console.error(err) }
     return
   }
 
@@ -1336,10 +1386,28 @@ function startPolling() {
 function applyFilter() {
   selectedDate = $("datePicker").value
   processData(allRows)   // calls render() internally
-  // inject manual plates and re-render if any were added
+  // inject manual plates and re-sort+render if any were added
   const before = filtered.length
   injectManualPlates()
-  if (filtered.length !== before) render()
+  if (filtered.length !== before) {
+    // Re-sort to place manual plates in correct ymsIn order
+    filtered.sort((a,b) => {
+      if (!!a._antecipada !== !!b._antecipada) return a._antecipada ? 1 : -1
+      const ae = effectiveIn(a), be = effectiveIn(b)
+      if (!ae && !be) return 0
+      if (!ae) return 1
+      if (!be) return -1
+      return ae.localeCompare(be)
+    })
+    render()
+  }
+}
+
+// ── Resolve ymsIn: CSV tem prioridade, fallback para manual ──────────
+function effectiveIn(r) {
+  const csv = hhmm(r.ymsIn)
+  if (csv !== "—") return csv
+  return manualMap[r.id]?.yms_in_manual || ""
 }
 
 /**
@@ -1408,13 +1476,6 @@ function processData(rows) {
     filtered.push({ id, placa, ymsIn, ymsOut, pacotes, motorista, _antecipada: isAnt && !isMain })
   }
 
-  // Helper: resolve effective ymsIn (CSV value or manual override)
-  const effectiveIn = r => {
-    const csv = hhmm(r.ymsIn)
-    if (csv !== "—") return csv
-    return manualMap[r.id]?.yms_in_manual || ""
-  }
-
   filtered.sort((a,b) => {
     // Grupos separados: normais primeiro, antecipadas depois
     if (!!a._antecipada !== !!b._antecipada) return a._antecipada ? 1 : -1
@@ -1453,11 +1514,16 @@ function mkSel(opts, cur, id, field, extraClass="") {
   }</select>`
 }
 
-// Botão HR INICIO: ativo → só o horário; inativo → label "Início"
+// Botão HR INICIO
+// - Inativo: clique registra hora atual e muda status
+// - Ativo: mostra hora + botão lápis (editar) + botão ✕ (apagar)
 function mkReversaBtn(id, m) {
   const time = m.reversa_hora || ""
   if (time) {
-    return `<div class="btn-reversa active" data-id="${id}" title="Clique para apagar">${time}</div>`
+    return `<div class="btn-reversa active" style="flex-direction:row;gap:4px;justify-content:center;padding:3px 4px;">
+      <span class="rev-time-edit" data-id="${id}" title="Editar horário" style="cursor:pointer;font-size:11px;font-weight:800;flex:1;text-align:center;">${time}</span>
+      <span class="rev-clear" data-id="${id}" title="Apagar horário" style="font-size:9px;opacity:.75;cursor:pointer;line-height:1;flex-shrink:0;">✕</span>
+    </div>`
   }
   return `<div class="btn-reversa" data-id="${id}" title="Registrar hora de início">Início</div>`
 }
