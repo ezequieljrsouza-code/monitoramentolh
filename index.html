@@ -1375,13 +1375,12 @@ function processData(rows) {
 
     if (!isMain && !isAnt) continue
 
-    // ── Excluir da tabela do dia atual se YMS IN e YMS OUT foram no dia anterior ──
-    // Se ambos os horários existem e as datas de ATA/ATD são anteriores à data principal,
-    // a operação foi concluída antes do dia selecionado → não exibir
-    if (isMain && ymsIn && ymsOut) {
-      const inDate  = ymsIn.substring(0,10)
-      const outDate = ymsOut.substring(0,10)
-      if (inDate < selectedDate && outDate < selectedDate) continue
+    // ── Excluir operações que começaram e terminaram antes/durante o dia anterior ──
+    // Se YMS IN é de data anterior ao dia selecionado E YMS OUT está preenchido
+    // → operação já concluída de um dia anterior, não exibir na tabela atual
+    if (isMain && ymsIn && ymsOut && ymsOut.trim()) {
+      const inDate = ymsIn.substring(0,10)
+      if (inDate < selectedDate) continue
     }
 
     // Auto-Concluída: YMS OUT preenchido
