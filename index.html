@@ -475,6 +475,18 @@ tbody tr:hover td{background:var(--bg4) !important}
 }
 .saved{animation:saved-flash .7s ease-out}
 
+/* ── Linha oculta ───────────────────────────────────────────────── */
+tr.row-hidden td{ opacity:.3; }
+.btn-ocultar{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:16px;border-radius:4px;cursor:pointer;
+  font-size:10px;line-height:1;
+  border:1px solid var(--border);background:var(--bg3);color:var(--text3);
+  transition:background .15s,color .15s;vertical-align:middle;margin-left:2px;
+}
+.btn-ocultar:hover{ background:var(--bg4);color:var(--accent); }
+.btn-ocultar.oculto{ background:#f87171;border-color:#dc2626;color:#fff; }
+
 /* ── Empty state ────────────────────────────────────────────────── */
 .empty-msg{padding:36px 20px;color:var(--text3);font-size:14px;text-align:center;line-height:2}
 .empty-msg strong{color:var(--text2)}
@@ -992,6 +1004,24 @@ $("tbody").addEventListener("change", async e => {
 
 // Tooltip da transportadora: toque no celular abre/fecha
 $("tbody").addEventListener("click", async e => {
+  // ── Ocultar / mostrar placa ──────────────────────────────────────
+  const ocBtn = e.target.closest(".btn-ocultar")
+  if (ocBtn) {
+    const id = ocBtn.dataset.id
+    if (!id) return
+    if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
+    const novoOculto = !manualMap[id].oculto
+    manualMap[id].oculto = novoOculto
+    render()
+    setSyncStatus("loading","Salvando…")
+    try {
+      await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, { route_id:id, oculto:novoOculto, updated_at:new Date().toISOString() })
+      setSyncStatus("ok","Online")
+      showToast(novoOculto ? "👁 Placa oculta" : "👁 Placa visível", "ok")
+    } catch(err){ setSyncStatus("err","Erro"); showToast("❌ Erro ao salvar","err"); console.error(err) }
+    return
+  }
+
   // ── Excluir placa manual ─────────────────────────────────────────
   const delBtn = e.target.closest(".del-manual")
   if (delBtn) {
@@ -1562,17 +1592,24 @@ function placaHTML(placa, m, id, motorista, antecipada) {
 
 // ── Render ───────────────────────────────────────────────────────────
 function render() {
-  let html="", concluidas=0, descarga=0, naoChegou=0, totalPacotes=0, aguardando=0
+  let html="", visNum=0, concluidas=0, descarga=0, naoChegou=0, totalPacotes=0, aguardando=0
   for (let i=0; i<filtered.length; i++) {
     const row = filtered[i]
     const id  = row.id
     const m   = manualMap[id]||{doca:"-",status_patio:"Não Chegou",perfil:"Granel",reversa_hora:"",reversa_tipo:"—"}
-    const cls = (row._antecipada ? "ant " : "") + (CLS_MAP[m.status_patio]||"st-NaoChegou")
-    if (m.status_patio==="Concluída")         concluidas++
-    if (m.status_patio==="Descarga iniciada") descarga++
-    if (m.status_patio==="Não Chegou")        naoChegou++
-    if (m.status_patio==="Aguardando Doca")   aguardando++
-    totalPacotes += parseInt(row.pacotes)||0
+    const oculto = !!m.oculto
+    const cls = (oculto ? "row-hidden " : "") + (row._antecipada ? "ant " : "") + (CLS_MAP[m.status_patio]||"st-NaoChegou")
+
+    // Contabilizar APENAS placas visíveis nos cards
+    if (!oculto) {
+      if (m.status_patio==="Concluída")         concluidas++
+      if (m.status_patio==="Descarga iniciada") descarga++
+      if (m.status_patio==="Não Chegou")        naoChegou++
+      if (m.status_patio==="Aguardando Doca")   aguardando++
+      totalPacotes += parseInt(row.pacotes)||0
+    }
+
+    if (!oculto) visNum++
 
     // YMS IN/OUT: CSV tem prioridade; manual como fallback
     const ymsInVal  = hhmm(row.ymsIn)  !== "—" ? hhmm(row.ymsIn)  : (m.yms_in_manual  || "")
@@ -1583,8 +1620,10 @@ function render() {
       return `<span class="yms-edit" data-id="${id}" data-field="${field}" title="Inserir horário">—</span>`
     }
 
+    const ocultarBtn = `<span class="btn-ocultar${oculto?" oculto":""}" data-id="${id}" title="${oculto?"Mostrar placa":"Ocultar placa"}">${oculto?"👁":"–"}</span>`
+
     html += `<tr class="${cls}">
-  <td><b>${i+1}</b>${row._manual ? `<br><span class="del-manual" data-id="${id}" title="Excluir placa manual" style="font-size:9px;cursor:pointer;color:#f87171;font-weight:700;letter-spacing:.3px;">✕ excluir</span>` : ""}</td>
+  <td style="white-space:nowrap;"><b>${oculto?"·":visNum}</b>${ocultarBtn}${row._manual ? `<br><span class="del-manual" data-id="${id}" title="Excluir placa manual" style="font-size:9px;cursor:pointer;color:#f87171;font-weight:700;letter-spacing:.3px;">✕</span>` : ""}</td>
   <td class="td-doca">${mkSel(DOCAS, m.doca, id,"doca")}</td>
   <td class="td-rev">${mkReversaBtn(id, m)}</td>
   <td class="td-placa">${placaHTML(row.placa, m, id, row.motorista, row._antecipada)}</td>
@@ -1600,7 +1639,7 @@ function render() {
     <small>Verifique a data ou envie um arquivo atualizado.</small></td></tr>`
 
   $("tbody").innerHTML          = html
-  $("kpiTotal").textContent     = filtered.length
+  $("kpiTotal").textContent     = visNum
   $("kpiConcluida").textContent = concluidas
   $("kpiDescarga").textContent  = descarga
   $("kpiNaoChegou").textContent = naoChegou
