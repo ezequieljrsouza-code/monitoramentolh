@@ -1686,22 +1686,30 @@ async function exportImg() {
       sel.parentNode.replaceChild(span, sel)
     })
 
-    // 2. Expandir overflow ANTES de medir alturas
-    const prevScrollO  = scroll.style.overflow
-    const prevScrollH  = scroll.style.height
-    const prevAreaW    = area.style.width
-    const prevAreaO    = area.style.overflow
+    // 2. Expandir overflow ANTES de medir
+    const prevScrollO = scroll.style.overflow
+    const prevScrollH = scroll.style.height
+    const prevAreaW   = area.style.width
+    const prevAreaO   = area.style.overflow
 
     scroll.style.overflow = "visible"
     scroll.style.height   = "auto"
     area.style.overflow   = "visible"
 
-    // 3. Forçar largura completa
+    // 3. Largura completa
     const fullW = Math.max(area.scrollWidth, table ? table.scrollWidth : 900, 900)
     area.style.width = fullW + "px"
 
-    // 4. Medir altura REAL depois de expandir + margem generosa no fundo
-    const fullH = area.scrollHeight + 120
+    // 4. Altura exata: bottom da última linha visível + 16px de padding
+    const areaTop   = area.getBoundingClientRect().top + window.scrollY
+    const allRows   = area.querySelectorAll("tbody tr:not([style*='display: none']):not([style*='display:none'])")
+    let lastBottom  = area.scrollHeight   // fallback
+    if (allRows.length) {
+      const lastRow  = allRows[allRows.length - 1]
+      const rowRect  = lastRow.getBoundingClientRect()
+      lastBottom = rowRect.bottom + window.scrollY - areaTop
+    }
+    const fullH = Math.ceil(lastBottom) + 16   // 16px padding exato no fundo
 
     const canvas = await html2canvas(area, {
       scale: 4,
@@ -1717,50 +1725,29 @@ async function exportImg() {
       logging: false,
       imageTimeout: 0,
       onclone: (doc) => {
-        // Expandir overflow no clone também
         const cloneScroll = doc.querySelector(".table-scroll")
-        if (cloneScroll) {
-          cloneScroll.style.overflow = "visible"
-          cloneScroll.style.height   = "auto"
-        }
+        if (cloneScroll) { cloneScroll.style.overflow = "visible"; cloneScroll.style.height = "auto" }
         const cloneWrap = doc.querySelector(".table-wrap")
-        if (cloneWrap) {
-          cloneWrap.style.overflow      = "visible"
-          cloneWrap.style.paddingBottom = "80px"
-        }
+        if (cloneWrap) { cloneWrap.style.overflow = "visible"; cloneWrap.style.paddingBottom = "0" }
         const cloneArea = doc.getElementById("printArea")
-        if (cloneArea) {
-          cloneArea.style.overflow      = "visible"
-          cloneArea.style.paddingBottom = "80px"
-        }
-
+        if (cloneArea) { cloneArea.style.overflow = "visible"; cloneArea.style.paddingBottom = "0" }
         doc.querySelectorAll("td, th").forEach(el => {
-          el.style.overflow     = "hidden"
-          el.style.textOverflow = "ellipsis"
-          el.style.whiteSpace   = "nowrap"
-          el.style.fontSize     = "12px"
+          el.style.overflow = "hidden"; el.style.textOverflow = "ellipsis"
+          el.style.whiteSpace = "nowrap"; el.style.fontSize = "12px"
         })
-        doc.querySelectorAll("thead th").forEach(el => {
-          el.style.fontSize = "13px"
-          el.style.padding  = "10px 6px"
-        })
-        doc.querySelectorAll("tbody td").forEach(el => {
-          el.style.padding  = "7px 5px"
-          el.style.fontSize = "12px"
-        })
+        doc.querySelectorAll("thead th").forEach(el => { el.style.fontSize = "13px"; el.style.padding = "10px 6px" })
+        doc.querySelectorAll("tbody td").forEach(el => { el.style.padding = "7px 5px"; el.style.fontSize = "12px" })
       }
     })
 
-    // 5. Restaurar estado original
+    // 5. Restaurar
     scroll.style.overflow = prevScrollO
     scroll.style.height   = prevScrollH
     area.style.overflow   = prevAreaO
     area.style.width      = prevAreaW
-    originals.forEach(({ sel, parent, span }) => {
-      parent.replaceChild(sel, span)
-    })
+    originals.forEach(({ sel, parent, span }) => parent.replaceChild(sel, span))
 
-    // 6. Salvar como PNG
+    // 6. Salvar PNG
     const a = document.createElement("a")
     a.download = "monitoramento_" + selectedDate + ".png"
     a.href = canvas.toDataURL("image/png")
