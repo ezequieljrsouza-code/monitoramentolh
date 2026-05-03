@@ -1918,10 +1918,10 @@ async function exportImg() {
       const rowRect  = lastRow.getBoundingClientRect()
       lastBottom = rowRect.bottom + window.scrollY - areaTop
     }
-    const fullH = Math.ceil(lastBottom) + 16   // 16px padding exato no fundo
+    const fullH = Math.ceil(lastBottom) + 48   // 48px padding no fundo (mais espaço abaixo da tabela)
 
     const canvas = await html2canvas(area, {
-      scale: 4,
+      scale: 6,
       useCORS: true,
       allowTaint: true,
       backgroundColor: bg,
