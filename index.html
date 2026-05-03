@@ -287,6 +287,9 @@ tr.st-NaoChegou  td.td-status{background:var(--st-naochegou-bg);color:var(--st-n
 tr.st-Aguardando td.td-status{background:var(--st-aguardando-bg);color:var(--st-aguardando-text)}
 tr.st-Bloqueada  td.td-status{background:var(--st-bloqueada-bg);color:var(--st-bloqueada-text)}
 
+/* Linha de placa do dia anterior */
+tr.ant-anterior { border-left: 3px solid #b45220; }
+
 /* ── Botão de Reversa ───────────────────────────────────────────── */
 .btn-reversa{
   display:flex;align-items:center;justify-content:center;
@@ -381,6 +384,27 @@ td.td-yms{ position:relative; }
 }
 .yms-popup .yms-ok { background:var(--accent);color:#fff; }
 .yms-popup .yms-cl { background:var(--bg4);color:var(--text2); }
+/* ── Data anterior (carretas do dia anterior) ───────────────────── */
+.date-group0{
+  display:flex;align-items:center;gap:6px;
+  background:var(--bg3);border-radius:8px;padding:6px 10px;
+  border:1.5px solid #b4522055;
+}
+.date-group0 label{font-size:11px;font-weight:700;color:#fb923c;white-space:nowrap}
+#datePicker0{
+  border:none;background:transparent;color:var(--text);
+  font-size:13px;font-family:'Barlow',sans-serif;font-weight:600;
+  cursor:pointer;outline:none;
+}
+.btn-date0-toggle{
+  border:1px solid var(--border);background:var(--bg3);color:var(--text3);
+  border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;
+  font-family:'Barlow',sans-serif;cursor:pointer;white-space:nowrap;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.btn-date0-toggle.on{background:#7c2d12;border-color:#b45220;color:#fff}
+.btn-date0-toggle:hover:not(.on){border-color:#b45220;color:#fb923c}
+
 /* ── Segunda data (carretas antecipadas) ────────────────────────── */
 .date-group2{
   display:flex;align-items:center;gap:6px;
@@ -564,6 +588,15 @@ tr.row-hidden{ display:none; }
       <input type="date" id="datePicker">
     </div>
 
+    <button id="btnDate0Toggle" class="btn-date0-toggle" title="Ativar placa do dia anterior">🗓 -data</button>
+    <div class="date-group0" id="date0Group" style="display:none">
+      <label>🟠</label>
+      <input type="date" id="datePicker0">
+      <span id="btnAnt0Edit" title="Editar seleção de placas do dia anterior"
+        style="font-size:10px;font-weight:700;color:#fb923c;cursor:pointer;
+        border-bottom:1px dashed #fb923c;white-space:nowrap;">editar</span>
+    </div>
+
     <button id="btnDate2Toggle" class="btn-date2-toggle" title="Ativar segunda data para carretas antecipadas">🗓 +data</button>
     <div class="date-group2" id="date2Group" style="display:none">
       <label>🟣</label>
@@ -703,6 +736,46 @@ tr.row-hidden{ display:none; }
     </div>
   </div>
 
+  <!-- Modal selecionar placas dia anterior -->
+  <div id="modalAnt0" style="
+    display:none;position:fixed;inset:0;z-index:999;
+    background:rgba(0,0,0,.6);backdrop-filter:blur(3px);
+    align-items:flex-start;justify-content:center;padding-top:40px;">
+    <div style="
+      background:var(--bg2);border:1px solid #b4522055;border-radius:14px;
+      padding:20px 20px;width:min(420px,95vw);box-shadow:var(--shadow-lg);
+      max-height:80vh;display:flex;flex-direction:column;gap:12px;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;
+        color:var(--text);letter-spacing:.5px;">
+        🟠 Selecionar Placas do Dia Anterior
+      </div>
+      <div style="font-size:11px;color:var(--text2);">
+        Escolha quais placas da data <b id="ant0DateLabel"></b> devem aparecer no painel atual.
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button id="btnAnt0SelectAll"
+          style="border:1px solid var(--border);background:var(--bg3);color:var(--text2);
+          border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;
+          font-family:'Barlow',sans-serif;cursor:pointer;">✔ Todas</button>
+        <button id="btnAnt0ClearAll"
+          style="border:1px solid var(--border);background:var(--bg3);color:var(--text2);
+          border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;
+          font-family:'Barlow',sans-serif;cursor:pointer;">✕ Nenhuma</button>
+      </div>
+      <div id="ant0ListWrap" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
+        <button id="btnAnt0Cancel"
+          style="border:1px solid var(--border);background:none;color:var(--text2);
+          border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;
+          font-family:'Barlow',sans-serif;cursor:pointer;">Cancelar</button>
+        <button id="btnAnt0Confirm"
+          style="border:none;background:#b45220;color:#fff;
+          border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;
+          font-family:'Barlow',sans-serif;cursor:pointer;">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal selecionar antecipadas -->
   <div id="modalAntecipad" style="
     display:none;position:fixed;inset:0;z-index:999;
@@ -757,6 +830,9 @@ let selectedDate    = todayStr()
 let selectedDate2   = ""
 let date2Active     = false
 let antecipSel      = new Set()   // Route IDs selecionados para mostrar como antecipadas
+let selectedDate0   = ""          // data anterior
+let date0Active     = false
+let ant0Sel         = new Set()   // Route IDs selecionados do dia anterior
 let pollTimer       = null
 let toastTimer      = null
 let lastManualHash  = ""
@@ -794,7 +870,132 @@ $("datePicker").addEventListener("change", () => {
     applyFilter()
     saveDate2Config()
   }
+  // Se data0 estiver ativa, atualiza automaticamente para o dia anterior
+  if (date0Active) {
+    const d = new Date($("datePicker").value + "T12:00:00")
+    d.setDate(d.getDate() - 1)
+    const prevDay = d.toISOString().substring(0,10)
+    $("datePicker0").value = prevDay
+    selectedDate0 = prevDay
+    ant0Sel.clear()
+    applyFilter()
+    saveDate0Config()
+  }
 })
+
+// ── Data anterior (placas do dia anterior) ────────────────────────
+$("btnDate0Toggle").addEventListener("click", () => {
+  date0Active = !date0Active
+  $("btnDate0Toggle").classList.toggle("on", date0Active)
+  $("date0Group").style.display = date0Active ? "flex" : "none"
+  if (date0Active) {
+    // Define data0 como o dia anterior à data principal
+    const d = new Date(selectedDate + "T12:00:00")
+    d.setDate(d.getDate() - 1)
+    $("datePicker0").value = d.toISOString().substring(0,10)
+    selectedDate0 = $("datePicker0").value
+    openAnt0Modal()
+  } else {
+    selectedDate0 = ""
+    ant0Sel.clear()
+    applyFilter()
+    saveDate0Config()
+  }
+})
+
+$("datePicker0").addEventListener("change", () => {
+  selectedDate0 = $("datePicker0").value
+  ant0Sel.clear()
+  openAnt0Modal()
+})
+
+$("btnAnt0Edit").addEventListener("click", () => openAnt0Modal())
+
+// ── Modal placas dia anterior ─────────────────────────────────────
+function openAnt0Modal() {
+  if (!selectedDate0) return
+  const candidates = []
+  for (const src of allRows) {
+    const placa   = v(src,"Veículo de carga 1")||v(src,"Veículo de carga 2")
+    const destino = v(src,"Destino").toUpperCase()
+    const eta     = normalizeDate(v(src,"Destino ETA")).substring(0,10)
+    const motor   = v(src,"Motorista").toUpperCase()
+    const id      = v(src,"Route ID")
+    if (destino !== "SPA1") continue
+    if (motor.includes("RODOPENHA")) continue
+    if (!placa||placa.toLowerCase().includes("sem placa")) continue
+    if (eta !== selectedDate0) continue
+    candidates.push({ id, placa, motor })
+  }
+
+  $("ant0DateLabel").textContent = selectedDate0
+  const wrap = $("ant0ListWrap")
+  wrap.innerHTML = candidates.length
+    ? candidates.map(c => `
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;
+        border-radius:8px;background:var(--bg3);cursor:pointer;font-family:'Barlow',sans-serif;">
+        <input type="checkbox" data-id="${c.id}" ${ant0Sel.has(c.id)?"checked":""}
+          style="width:15px;height:15px;accent-color:#b45220;cursor:pointer;">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;
+          color:var(--text);letter-spacing:.3px;">${c.placa}</span>
+        <span style="font-size:10px;color:var(--text2);font-weight:600;">${c.motor}</span>
+      </label>`).join("")
+    : `<div style="padding:16px;text-align:center;color:var(--text3);font-size:13px;">
+        Nenhuma placa encontrada para ${selectedDate0}.</div>`
+
+  $("modalAnt0").style.display = "flex"
+}
+
+$("btnAnt0Cancel").addEventListener("click", () => {
+  $("modalAnt0").style.display = "none"
+  if (ant0Sel.size === 0) {
+    date0Active = false
+    $("btnDate0Toggle").classList.remove("on")
+    $("date0Group").style.display = "none"
+  }
+})
+
+$("btnAnt0SelectAll").addEventListener("click", () => {
+  $("ant0ListWrap").querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = true)
+})
+$("btnAnt0ClearAll").addEventListener("click", () => {
+  $("ant0ListWrap").querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = false)
+})
+
+$("btnAnt0Confirm").addEventListener("click", async () => {
+  ant0Sel.clear()
+  $("ant0ListWrap").querySelectorAll("input[type=checkbox]:checked").forEach(cb => {
+    ant0Sel.add(cb.dataset.id)
+  })
+  $("modalAnt0").style.display = "none"
+  applyFilter()
+  saveDate0Config()
+})
+
+async function saveDate0Config() {
+  try {
+    await rtdbPatch("lh_config", {
+      date0_active: date0Active,
+      date0_value:  selectedDate0,
+      ant0_sel:     [...ant0Sel],
+      updated_at:   new Date().toISOString()
+    })
+  } catch(e) { console.warn("Config save date0:", e) }
+}
+
+async function loadDate0Config() {
+  try {
+    const cfg = await rtdbGet("lh_config")
+    if (cfg && cfg.date0_active) {
+      date0Active   = true
+      selectedDate0 = cfg.date0_value || ""
+      ant0Sel       = new Set(cfg.ant0_sel || [])
+      $("btnDate0Toggle").classList.add("on")
+      $("date0Group").style.display = "flex"
+      if (selectedDate0) $("datePicker0").value = selectedDate0
+    }
+  } catch(e) { console.warn("Config load date0:", e) }
+}
 
 // ── Segunda data (antecipadas) ────────────────────────────────────
 $("btnDate2Toggle").addEventListener("click", () => {
@@ -1206,6 +1407,7 @@ $("tbody").addEventListener("click", async e => {
 ;(async () => {
   try {
     loading("Carregando dados da nuvem…")
+    await loadDate0Config()
     await loadDate2Config()
     await loadCloudCSV()
     await loadManual()
@@ -1422,7 +1624,9 @@ function applyFilter() {
   if (filtered.length !== before) {
     // Re-sort to place manual plates in correct ymsIn order
     filtered.sort((a,b) => {
-      if (!!a._antecipada !== !!b._antecipada) return a._antecipada ? 1 : -1
+      const grpA = a._anterior ? 0 : a._antecipada ? 2 : 1
+      const grpB = b._anterior ? 0 : b._antecipada ? 2 : 1
+      if (grpA !== grpB) return grpA - grpB
       const ae = effectiveIn(a), be = effectiveIn(b)
       if (!ae && !be) return 0
       if (!ae) return 1
@@ -1470,8 +1674,9 @@ function processData(rows) {
 
     const isMain = etaDate === selectedDate
     const isAnt  = date2Active && selectedDate2 && etaDate === selectedDate2 && antecipSel.has(id)
+    const isAnt0 = date0Active && selectedDate0 && etaDate === selectedDate0 && ant0Sel.has(id)
 
-    if (!isMain && !isAnt) continue
+    if (!isMain && !isAnt && !isAnt0) continue
 
     // ── Excluir operações que começaram e terminaram antes/durante o dia anterior ──
     // Se YMS IN é de data anterior ao dia selecionado E YMS OUT está preenchido
@@ -1503,12 +1708,14 @@ function processData(rows) {
       }
     }
 
-    filtered.push({ id, placa, ymsIn, ymsOut, pacotes, motorista, _antecipada: isAnt && !isMain })
+    filtered.push({ id, placa, ymsIn, ymsOut, pacotes, motorista, _antecipada: isAnt && !isMain, _anterior: isAnt0 && !isMain && !isAnt })
   }
 
   filtered.sort((a,b) => {
-    // Grupos separados: normais primeiro, antecipadas depois
-    if (!!a._antecipada !== !!b._antecipada) return a._antecipada ? 1 : -1
+    // Grupos separados: anteriores primeiro, normais, antecipadas por último
+    const grpA = a._anterior ? 0 : a._antecipada ? 2 : 1
+    const grpB = b._anterior ? 0 : b._antecipada ? 2 : 1
+    if (grpA !== grpB) return grpA - grpB
     // Dentro de cada grupo: ordem por YMS IN crescente, vazios por último
     const ae = effectiveIn(a), be = effectiveIn(b)
     if (!ae && !be) return 0
@@ -1559,7 +1766,7 @@ function mkReversaBtn(id, m) {
 }
 
 // Placa: nome + tooltip transportadora + mini-toggles MP / PCT + pílula
-function placaHTML(placa, m, id, motorista, antecipada) {
+function placaHTML(placa, m, id, motorista, antecipada, anteriorBadge) {
   const rtype = m.reversa_tipo || "—"
   const mpOn  = rtype === "MP"
   const pkOn  = rtype === "Pacotes"
@@ -1579,7 +1786,9 @@ function placaHTML(placa, m, id, motorista, antecipada) {
 
   const antBadge = antecipada
     ? `<span class="antecip-badge">🟣 antecipada</span>`
-    : ""
+    : anteriorBadge
+      ? `<span class="antecip-badge" style="background:#b4522022;color:#fb923c;border-color:#b4522055;">🟠 anterior</span>`
+      : ""
 
   return `<div class="placa-wrap" data-placa-id="${id}">
     ${tip}
@@ -1598,7 +1807,7 @@ function render() {
     const id  = row.id
     const m   = manualMap[id]||{doca:"-",status_patio:"Não Chegou",perfil:"Granel",reversa_hora:"",reversa_tipo:"—"}
     const oculto = !!m.oculto
-    const cls = (oculto ? "row-hidden " : "") + (row._antecipada ? "ant " : "") + (CLS_MAP[m.status_patio]||"st-NaoChegou")
+    const cls = (oculto ? "row-hidden " : "") + (row._antecipada ? "ant " : "") + (row._anterior ? "ant-anterior " : "") + (CLS_MAP[m.status_patio]||"st-NaoChegou")
 
     // Contabilizar APENAS placas visíveis nos cards
     if (!oculto) {
@@ -1626,7 +1835,7 @@ function render() {
   <td style="white-space:nowrap;"><b>${oculto?"·":visNum}</b>${ocultarBtn}${row._manual ? `<br><span class="del-manual" data-id="${id}" title="Excluir placa manual" style="font-size:9px;cursor:pointer;color:#f87171;font-weight:700;letter-spacing:.3px;">✕</span>` : ""}</td>
   <td class="td-doca">${mkSel(DOCAS, m.doca, id,"doca")}</td>
   <td class="td-rev">${mkReversaBtn(id, m)}</td>
-  <td class="td-placa">${placaHTML(row.placa, m, id, row.motorista, row._antecipada)}</td>
+  <td class="td-placa">${placaHTML(row.placa, m, id, row.motorista, row._antecipada, row._anterior)}</td>
   <td class="td-yms">${mkTimeCell(ymsInVal,  "yms_in_manual")}</td>
   <td class="td-yms">${mkTimeCell(ymsOutVal, "yms_out_manual")}</td>
   <td>${row.pacotes||"—"}</td>
