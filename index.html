@@ -479,7 +479,14 @@ td select{
   transition:box-shadow .15s;
   -webkit-appearance:auto;appearance:auto;
   text-overflow:ellipsis;overflow:hidden;
+  color-scheme: dark;
 }
+td select option{
+  background:#1a1d27;
+  color:#e8eaf0;
+}
+[data-theme="light"] td select{color-scheme:light}
+[data-theme="light"] td select option{background:#ffffff;color:#1a1d27}
 td select:focus{box-shadow:0 0 0 2px var(--accent);outline:none}
 /* Select dentro da célula de status herda cor do status */
 td.td-status select{
