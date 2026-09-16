@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>MONITORAMENTO LH — SPA1</title>
+<title>MONITORAMENTO LH — SPA1 / SPA2</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -593,7 +593,7 @@ tr.row-hidden{ display:none; }
     <!-- Header -->
     <div class="header">
       <div class="header-title">
-        🚛 Monitoramento LH SPA1
+        🚛 Monitoramento LH SPA1 / SPA2
         <small></small>
       </div>
     </div>
@@ -879,7 +879,7 @@ function openAnt0Modal() {
     const eta     = normalizeDate(v(src,"Destino ETA")).substring(0,10)
     const motor   = v(src,"Motorista").toUpperCase()
     const id      = v(src,"Route ID")
-    if (destino !== "SPA1") continue
+    if (destino !== "SPA1" && destino !== "SPA2") continue
     if (motor.includes("RODOPENHA")) continue
     if (!placa||placa.toLowerCase().includes("sem placa")) continue
     if (eta !== selectedDate0) continue
@@ -994,7 +994,7 @@ function openAntModal() {
     const eta     = normalizeDate(v(src,"Destino ETA")).substring(0,10)
     const motor   = v(src,"Motorista").toUpperCase()
     const id      = v(src,"Route ID")
-    if (destino !== "SPA1") continue
+    if (destino !== "SPA1" && destino !== "SPA2") continue
     if (motor.includes("RODOPENHA")) continue
     if (!placa||placa.toLowerCase().includes("sem placa")) continue
     if (eta !== selectedDate2) continue
@@ -1605,7 +1605,7 @@ function effectiveIn(r) {
 /**
  * =SEERRO(SORT(FILTER(
  *   {L \ Z \ AA \ AK};          Placa, DestinoATA, DestinoATD, Pacotes
- *   X="SPA1" *                  Destino
+ *   OU(X="SPA1";X="SPA2") *      Destino
  *   INT(Y)=HOJE() *             INT(Destino ETA) = data ref
  *   E<>"RODOPENHA" *            Motorista
  *   L<>""                       Placa não vazia
@@ -1626,7 +1626,7 @@ function processData(rows) {
     const pacotes   = v(src,"Pacotes")
     const id        = v(src,"Route ID")
 
-    if (destino !== "SPA1")                                  continue
+    if (destino !== "SPA1" && destino !== "SPA2")             continue
     if (motorista.includes("RODOPENHA"))                     continue
     if (!placa||placa.toLowerCase().includes("sem placa"))   continue
 
@@ -1802,7 +1802,7 @@ function render() {
 </tr>`
   }
   if (!html) html = `<tr><td colspan="9" class="empty-msg">
-    Nenhum registro SPA1 em <strong>${selectedDate}</strong><br>
+    Nenhum registro SPA1 / SPA2 em <strong>${selectedDate}</strong><br>
     <small>Verifique a data ou envie um arquivo atualizado.</small></td></tr>`
 
   $("tbody").innerHTML          = html
