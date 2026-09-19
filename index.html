@@ -1,1931 +1,2193 @@
-<!DOCTYPE html>
-<html lang="pt-BR" data-theme="light">
-<head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>MONITORAMENTO LH — SPA1 / SPA2</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Expedição SPA1 · SPA2</title>
 <style>
-/* ── CSS Variables ──────────────────────────────────────────────── */
-:root {
-  --accent:      #002961;
-  --accent-dark: #001a40;
-  --accent-glow: rgba(0,41,97,.22);
+  :root {
+    color-scheme: light;
+    --bg: #faf9f4;
+    --surface: #ffffff;
+    --surface-2: #f2f0e6;
+    --surface-3: #e9e6d8;
+    --border: #e0ddcd;
+    --border-strong: #cac6b0;
+    --text: #201f19;
+    --text-muted: #6d6a5a;
+    --text-faint: #97937e;
+    --accent: #26297e;
+    --accent-strong: #1a1c5c;
+    --accent-soft: #e8e8fb;
+    --brand: #ffe600;
+    --brand-ink: #3a3300;
+    --good: #16794f;
+    --good-soft: #e0f5ea;
+    --warn: #9a5b0a;
+    --warn-soft: #fbead0;
+    --critical: #b23127;
+    --critical-soft: #fbe4e0;
+    --info: #1f5fa6;
+    --info-soft: #e2edf9;
+    --muted-chip: #6d6a5a;
+    --muted-chip-soft: #ecebe2;
+    --cat-xpt: #2e5fa3;
+    --cat-svc: #7a4fa8;
+    --cat-nex: #147d72;
+    --cat-dc: #a85f1f;
+    --shadow: 0 1px 2px rgba(32,31,25,0.06), 0 4px 16px rgba(32,31,25,0.06);
+    --radius: 10px;
+    --focus: #26297e;
+  }
 
-  --st-concluida:#16a34a; --st-concluida-bg:#dcfce7; --st-concluida-text:#14532d;
-  --st-descarga: #ca8a04; --st-descarga-bg: #fef9c3; --st-descarga-text: #713f12;
-  --st-docada:   #b91c1c; --st-docada-bg:   #fee2e2; --st-docada-text:   #7f1d1d;
-  --st-fos:      #1d4ed8; --st-fos-bg:      #dbeafe; --st-fos-text:      #1e3a8a;
-  --st-naochegou:#ea580c; --st-naochegou-bg:#ffedd5; --st-naochegou-text:#7c2d12;
-  --st-aguardando:#6b7280;--st-aguardando-bg:#f3f4f6;--st-aguardando-text:#374151;
-  --st-bloqueada:#7c3aed; --st-bloqueada-bg: #ede9fe;--st-bloqueada-text:#4c1d95;
+  /* Painel fixo em modo claro sempre — de propósito, sem bloco de modo escuro
+     (nem por @media prefers-color-scheme, nem por [data-theme="dark"]), para
+     não mudar de cor conforme o tema do navegador/SO do usuário. */
 
-  --bg:     #f1f3f8;
-  --bg2:    #ffffff;
-  --bg3:    #f8f9fc;
-  --bg4:    #eef0f6;
-  --border: rgba(0,0,0,.08);
-  --text:   #1a1d27;
-  --text2:  #555b72;
-  --text3:  #9aa0b8;
-  --shadow: 0 2px 8px rgba(0,0,0,.08);
-  --shadow-lg:0 8px 24px rgba(0,0,0,.12);
-  --header-bg:linear-gradient(135deg,#002961 0%,#001a40 100%);
-}
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+  ::selection { background: var(--accent-soft); }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
 
-/* ── Reset ──────────────────────────────────────────────────────── */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{
-  font-family:'Barlow',sans-serif;
-  background:var(--bg);
-  color:var(--text);
-  min-height:100vh;
-  font-size:14px;
-  transition:background .3s,color .3s;
-}
-/* Smooth theme transition on all key elements */
-.topbar,.card,.table-wrap,.sync-badge,
-#uploadStatus,.file-label,.date-group,#datePicker,
-tbody td,td select,#toast{
-  transition:background .3s,color .3s,border-color .3s,box-shadow .3s;
-}
+  .topbar {
+    background: var(--brand);
+    color: var(--brand-ink);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+  }
+  .topbar .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--brand-ink); opacity: 0.55; }
+  .topbar .spacer { flex: 1; }
+  .topbar .clock { font-variant-numeric: tabular-nums; opacity: 0.75; font-weight: 600; }
+  .topbar .brand-logo { height: 22px; width: auto; display: block; flex-shrink: 0; }
 
-/* ── App wrapper ────────────────────────────────────────────────── */
-.app{max-width:1400px;margin:0 auto;padding:12px}
+  header.page {
+    padding: 22px 24px 4px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  header.page h1 {
+    margin: 0 0 4px;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  header.page .sub {
+    color: var(--text-muted);
+    font-size: 13.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  header.page .sub .spacer { flex: 1; }
+  header.page .sub .stations {
+    font-weight: 600;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    padding: 2px 9px;
+    border-radius: 999px;
+  }
+  .save-indicator {
+    font-size: 12px;
+    color: var(--text-faint);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .save-indicator .pulse {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--good);
+  }
 
-/* ── Header (dentro do print) ───────────────────────────────────── */
-.header{
-  background:var(--header-bg);
-  color:#fff;
-  border-radius:14px;
-  padding:14px 18px;
-  margin-bottom:10px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  box-shadow:0 4px 20px var(--accent-glow);
-}
-.header-title{
-  font-family:'Barlow Condensed',sans-serif;
-  font-size:clamp(16px,4vw,26px);
-  font-weight:900;
-  letter-spacing:1.5px;
-  text-transform:uppercase;
-  line-height:1.1;
-  text-align:center;
-}
-.header-title small{font-weight:400;opacity:.75;font-size:.65em;display:block;letter-spacing:.5px}
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 18px 24px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
 
-/* ── Analyst badge ──────────────────────────────────────────────── */
-.analyst{
-  display:inline-flex;align-items:center;gap:6px;
-  margin-top:8px;
-  background:rgba(255,255,255,.15);
-  border:1px solid rgba(255,255,255,.25);
-  border-radius:20px;
-  padding:3px 12px 3px 8px;
-  font-size:11px;font-weight:600;letter-spacing:.3px;
-  color:rgba(255,255,255,.9);
-}
-.analyst-dot{
-  width:6px;height:6px;border-radius:50%;
-  background:#4ade80;box-shadow:0 0 6px #4ade80;
-}
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    box-shadow: var(--shadow);
+    min-width: 0;
+    text-align: center;
+  }
+  .kpi .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-faint);
+    font-weight: 700;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .kpi .value {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .kpi .value.good { color: var(--good); }
+  .kpi .value.warn { color: var(--warn); }
+  .kpi .value.critical { color: var(--critical); }
+  .kpi .sub { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
+  .kpi .bar {
+    margin-top: 8px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--surface-3);
+    overflow: hidden;
+  }
+  .kpi .bar > span {
+    display: block; height: 100%;
+    background: var(--good);
+    border-radius: 3px;
+    transition: width 0.25s ease;
+  }
 
-/* ── Sync badge ─────────────────────────────────────────────────── */
-.sync-badge{
-  display:flex;align-items:center;gap:5px;
-  background:var(--bg3);
-  border:1px solid var(--border);
-  border-radius:20px;padding:4px 10px;
-  font-size:11px;font-weight:600;color:var(--text2);
-  white-space:nowrap;
-}
-.sync-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:pg 2s infinite}
-.sync-dot.err{background:#f87171;animation:none}
-.sync-dot.loading{background:#fbbf24;animation:py 1s infinite}
-@keyframes pg{0%,100%{opacity:1}50%{opacity:.35}}
-@keyframes py{0%,100%{opacity:1}50%{opacity:.25}}
+  .group-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .group-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    box-shadow: var(--shadow);
+    transition: border-color 0.15s ease, transform 0.1s ease;
+  }
+  .group-card:hover { border-color: var(--border-strong); }
+  .group-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .group-card .swatch { width: 10px; height: 32px; border-radius: 4px; flex-shrink: 0; }
+  .group-card .meta { min-width: 0; flex: 1; }
+  .group-card .name { font-weight: 700; font-size: 13px; }
+  .group-card .count { font-size: 11.5px; color: var(--text-muted); }
+  .group-card .pending { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
 
-/* ── KPI cards ──────────────────────────────────────────────────── */
-.dashboard{
-  display:grid;
-  grid-template-columns:repeat(6,1fr);
-  gap:10px;
-  margin-bottom:12px;
-}
-.card{
-  background:var(--bg2);
-  border-radius:12px;
-  padding:14px 10px;
-  text-align:center;
-  box-shadow:var(--shadow);
-  border:1px solid var(--border);
-  transition:transform .15s,box-shadow .15s;
-}
-.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
-.card-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);margin-bottom:4px}
-.card-value{font-family:'Barlow Condensed',sans-serif;font-size:clamp(26px,5vw,40px);font-weight:900;line-height:1}
-.card-total   .card-value{color:var(--accent)}
-.card-ok      .card-value{color:var(--st-concluida)}
-.card-desc    .card-value{color:var(--st-descarga)}
-.card-nc      .card-value{color:var(--st-naochegou)}
-.card-pkg     .card-value{color:#0ea5e9}
-.card-ag      .card-value{color:var(--st-aguardando)}
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .toolbar .search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 10px;
+    min-width: 240px;
+    flex: 1;
+    max-width: 340px;
+  }
+  .toolbar .search svg { flex-shrink: 0; color: var(--text-faint); }
+  .toolbar .search input {
+    border: none; outline: none; background: transparent;
+    font: inherit; color: var(--text); width: 100%;
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface-2);
+    padding: 3px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+  }
+  .tabs button {
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-weight: 600;
+    font-size: 12.5px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .tabs button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+  .toolbar .spacer { flex: 1; }
+  .toggle-field {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12.5px; font-weight: 600; color: var(--text-muted);
+    white-space: nowrap; cursor: pointer; user-select: none;
+  }
+  .toggle-field input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .toggle-switch {
+    position: relative; width: 34px; height: 19px; border-radius: 999px;
+    background: var(--surface-3); border: 1px solid var(--border-strong);
+    transition: background 0.15s ease, border-color 0.15s ease; flex-shrink: 0;
+  }
+  .toggle-switch::after {
+    content: ""; position: absolute; top: 1px; left: 1px; width: 15px; height: 15px;
+    border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    transition: transform 0.15s ease;
+  }
+  .toggle-field input:checked + .toggle-switch { background: var(--accent); border-color: var(--accent); }
+  .toggle-field input:checked + .toggle-switch::after { transform: translateX(15px); background: white; }
+  .toggle-field input:focus-visible + .toggle-switch { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .btn {
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-weight: 600;
+    font-size: 12.5px;
+    padding: 7px 13px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  .btn.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+  .btn.ghost { border-color: transparent; background: transparent; }
+  .btn.ghost:hover { background: var(--surface-2); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
 
-/* ── Top bar (controles — fora do print) ────────────────────────── */
-.topbar{
-  background:var(--bg2);
-  border-radius:12px;
-  padding:8px 12px;
-  margin-bottom:10px;
-  display:flex;
-  align-items:center;
-  flex-wrap:wrap;
-  gap:8px;
-  box-shadow:var(--shadow);
-  border:1px solid var(--border);
-}
-.topbar-right{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
-.file-label{
-  display:flex;align-items:center;gap:6px;
-  background:var(--bg3);
-  border:1.5px dashed var(--border);
-  border-radius:8px;padding:7px 12px;
-  cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);
-  flex:1;min-width:150px;
-  transition:border-color .2s,color .2s;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-.file-label:hover{border-color:var(--accent);color:var(--accent)}
-.file-label input{display:none}
-.date-group{
-  display:flex;align-items:center;gap:6px;
-  background:var(--bg3);border-radius:8px;padding:6px 10px;
-  border:1px solid var(--border);
-}
-.date-group label{font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap}
-#datePicker{
-  border:none;background:transparent;color:var(--text);
-  font-size:13px;font-family:'Barlow',sans-serif;font-weight:600;
-  cursor:pointer;outline:none;
-}
-.btn-group{display:flex;gap:6px;flex-wrap:wrap}
-.btn{
-  border:none;padding:8px 14px;border-radius:8px;
-  font-family:'Barlow',sans-serif;font-weight:700;font-size:12px;
-  cursor:pointer;white-space:nowrap;
-  transition:filter .15s,transform .1s;
-  display:flex;align-items:center;gap:5px;
-}
-.btn:hover{filter:brightness(1.1)}
-.btn:active{transform:scale(.97)}
-.btn-upload{background:var(--accent);color:#fff}
-.btn-print {background:#16a34a;color:#fff}
-.btn-clear {background:#dc2626;color:#fff}
-#uploadStatus{
-  font-size:11px;font-weight:600;padding:4px 8px;
-  border-radius:6px;background:var(--bg3);color:var(--text2);
-  border:1px solid var(--border);
-  white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;
-}
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: visible;
+  }
+  table { border-collapse: collapse; width: 100%; min-width: 1180px; }
+  thead th {
+    position: sticky; top: 0; z-index: 2;
+    background: var(--brand);
+    text-align: left;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--brand-ink);
+    font-weight: 700;
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border-strong);
+    white-space: nowrap;
+  }
+  thead th.num, td.num { text-align: center; }
+  thead th.center-col, td.center-col { text-align: center; }
+  thead th.col-origem, td.col-origem { white-space: nowrap; }
+  thead th.col-origem { text-align: center; }
+  thead th[data-sort] { cursor: pointer; user-select: none; }
+  thead th[data-sort]:hover { background: color-mix(in srgb, var(--brand) 80%, black 12%); }
+  thead th[data-sort] .sort-arrow { display: inline-block; width: 9px; margin-left: 3px; opacity: 0.35; }
+  thead th[data-sort].sort-active .sort-arrow { opacity: 1; }
+  tbody td {
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tbody tr:hover td { background: var(--surface-2); }
+  tbody tr.zero-pending td { background: color-mix(in srgb, var(--good-soft) 35%, transparent); }
+  tbody tr.zero-pending:hover td { background: var(--good-soft); }
 
-/* ── Table ──────────────────────────────────────────────────────── */
-.table-wrap{
-  background:var(--bg2);border-radius:14px;
-  box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;
-}
-.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%}
-table{
-  width:100%;border-collapse:collapse;
-  table-layout:fixed; /* ← colunas respeitam widths definidos */
-}
-/* Larguras das 10 colunas: #, DOCA, REV-BTN, PLACA, IN, OUT, PKG, STATUS, PERFIL */
-col.c-num    {width:3%}
-col.c-doca   {width:8%}
-col.c-rev    {width:9%}
-col.c-placa  {width:11%}
-col.c-in     {width:6%}
-col.c-out    {width:6%}
-col.c-pkg    {width:7%}
-col.c-status {width:26%}
-col.c-perfil {width:14%}
+  .cat-badge {
+    display: inline-flex; align-items: center; vertical-align: middle; gap: 6px;
+    font-weight: 700;
+  }
+  .cat-badge .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .origin-name { font-weight: 600; vertical-align: middle; }
 
-thead th{
-  background:var(--accent);color:#fff;
-  padding:8px 3px;
-  font-family:'Barlow Condensed',sans-serif;
-  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  text-align:center;
-  position:sticky;top:0;z-index:2;
-}
-tbody tr{transition:background .15s}
-tbody td{
-  padding:5px 3px;border-bottom:1px solid var(--border);
-  text-align:center;font-size:11px;color:var(--text);vertical-align:middle;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  font-weight:700;
-}
-tbody tr:last-child td{border-bottom:none}
+  td input[type="number"], td input[type="text"] {
+    width: 100%;
+    border: 1px solid transparent;
+    background: transparent;
+    font: inherit;
+    color: var(--text);
+    padding: 5px 6px;
+    border-radius: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  td input[type="number"] { width: 62px; text-align: center; -moz-appearance: textfield; box-sizing: border-box; }
+  td input[type="text"] { min-width: 140px; box-sizing: border-box; text-align: center; }
+  td input:hover { background: var(--surface-2); }
+  td input:focus { background: var(--surface); border-color: var(--accent); outline: none; }
+  td input[type="number"]::-webkit-outer-spin-button, td input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-/* ── Status: cor SOMENTE na celula td.td-status ─────────────────── */
-tbody td{font-weight:700;color:var(--text)}
+  /* position:relative + inline-block em vez de inline-flex: o cadeado fica
+     sobreposto (absolute) em vez de disputar espaço na linha, assim o input
+     mantém a mesma largura/alinhamento das colunas sem cadeado (Backlog,
+     Impacto DIT) e os números batem entre si mesmo com o cadeado revelado. */
+  .field-with-lock { position: relative; display: inline-block; }
+  .field-with-lock:hover input.manual-input,
+  .field-with-lock:focus-within input.manual-input {
+    background: var(--warn-soft);
+    border-color: var(--warn);
+    color: var(--warn);
+    font-weight: 700;
+  }
+  .manual-lock {
+    position: absolute; top: 50%; right: -19px; transform: translateY(-50%);
+    border: none; background: transparent; cursor: pointer;
+    font-size: 11px; line-height: 1; padding: 2px; border-radius: 4px;
+    opacity: 0; visibility: hidden; transition: opacity .1s;
+  }
+  .field-with-lock:hover .manual-lock,
+  .field-with-lock:focus-within .manual-lock { opacity: 0.85; visibility: visible; }
+  .manual-lock:hover { background: var(--warn-soft); opacity: 1; }
 
-td.td-status{
-  padding:3px 4px;font-weight:800;
-  /* sem border-radius aqui — o select interno já estiliza */
-}
+  .calc-cell { font-weight: 700; font-variant-numeric: tabular-nums; padding: 5px 10px; }
+  .pending-pill {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 30px; padding: 3px 8px;
+    border-radius: 999px; font-weight: 800; font-size: 12.5px;
+  }
+  .pending-pill.good { background: var(--good-soft); color: var(--good); }
+  .pending-pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pending-pill.critical { background: var(--critical-soft); color: var(--critical); }
 
-tr.st-Concluida  td.td-status{background:var(--st-concluida-bg);color:var(--st-concluida-text)}
-tr.st-Descarga   td.td-status{background:var(--st-descarga-bg); color:var(--st-descarga-text)}
-tr.st-Docada     td.td-status{background:var(--st-docada-bg);   color:var(--st-docada-text)}
-tr.st-Fos        td.td-status{background:var(--st-fos-bg);      color:var(--st-fos-text)}
-tr.st-NaoChegou  td.td-status{background:var(--st-naochegou-bg);color:var(--st-naochegou-text)}
-tr.st-Aguardando td.td-status{background:var(--st-aguardando-bg);color:var(--st-aguardando-text)}
-tr.st-Bloqueada  td.td-status{background:var(--st-bloqueada-bg);color:var(--st-bloqueada-text)}
+  select.status-select {
+    font: inherit; font-weight: 700; font-size: 11.5px;
+    text-align: center;
+    text-align-last: center;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 22px 5px 22px;
+    cursor: pointer;
+    appearance: none;
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 9px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
+  select.status-select.s-good { background-color: var(--good-soft); color: var(--good); }
+  select.status-select.s-info { background-color: var(--info-soft); color: var(--info); }
+  select.status-select.s-warn { background-color: var(--warn-soft); color: var(--warn); }
+  select.status-select.s-critical { background-color: var(--critical-soft); color: var(--critical); }
+  select.status-select.s-muted { background-color: var(--muted-chip-soft); color: var(--muted-chip); }
 
-/* Linha de placa do dia anterior */
-tr.ant-anterior { border-left: 3px solid #b45220; }
+  /* Alça de preenchimento do Status (equivalente ao "arrastar" do Excel):
+     quadradinho no canto do select — arrastar sobre outras linhas replica
+     o mesmo status nelas, igual ao fill handle de uma planilha. */
+  .status-fill-wrap { position: relative; display: inline-block; }
+  .status-fill-wrap .fill-handle {
+    position: absolute; right: -3px; bottom: -3px; width: 8px; height: 8px;
+    background: var(--accent); border: 1.5px solid var(--surface);
+    border-radius: 2px; cursor: crosshair; z-index: 3;
+  }
+  .status-fill-wrap .fill-handle:hover,
+  .status-fill-wrap .fill-handle.filling { transform: scale(1.35); }
+  tbody tr.fill-target td[data-label="Status"] { box-shadow: inset 0 0 0 2px var(--accent); }
+  body.filling-status { user-select: none; cursor: crosshair; }
 
-/* ── Botão de Reversa ───────────────────────────────────────────── */
-.btn-reversa{
-  display:flex;align-items:center;justify-content:center;
-  width:100%;border:1.5px solid var(--border);border-radius:6px;
-  padding:4px 3px;cursor:pointer;
-  background:var(--bg2);color:var(--text2);
-  font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;
-  letter-spacing:.3px;
-  transition:background .15s,border-color .15s,color .15s;
-  white-space:nowrap;
-}
-.btn-reversa:hover{border-color:var(--accent);color:var(--accent)}
-.btn-reversa:not(.active){font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;opacity:.7}
-.btn-reversa.active{background:#16a34a;border-color:#15803d;color:#fff;}
+  tfoot td {
+    background: var(--brand);
+    color: var(--brand-ink);
+    border-top: 2px solid var(--border-strong);
+    font-weight: 800;
+    padding: 9px 10px;
+    font-variant-numeric: tabular-nums;
+  }
 
-/* ── Toggle MP / PCT abaixo da placa ────────────────────────────── */
-.reversa-toggles{
-  display:flex;gap:2px;margin-top:2px;justify-content:center;
-}
-.rtgl{
-  font-size:7px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;
-  padding:1px 5px;border-radius:8px;cursor:pointer;border:1px solid var(--border);
-  background:var(--bg3);color:var(--text3);
-  transition:background .12s,color .12s,border-color .12s;
-  white-space:nowrap;line-height:1.4;
-  -webkit-tap-highlight-color:transparent;
-}
-.rtgl:hover{border-color:var(--text2);color:var(--text2)}
-.rtgl.on.mp  {background:#7c3aed;color:#fff;border-color:#6d28d9}
-.rtgl.on.pkg {background:#0369a1;color:#fff;border-color:#075985}
+  .empty-state {
+    padding: 40px; text-align: center; color: var(--text-faint); font-size: 13px;
+  }
 
-/* ── Tooltip transportadora na placa ────────────────────────────── */
-.placa-wrap{display:flex;flex-direction:column;align-items:center;gap:1px;position:relative}
-.placa-wrap .transp-tip{
-  display:none;
-  position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);
-  background:#1e293b;color:#e2e8f0;
-  font-size:10px;font-weight:600;font-family:'Barlow',sans-serif;
-  white-space:nowrap;padding:4px 8px;border-radius:6px;
-  box-shadow:0 2px 8px rgba(0,0,0,.4);
-  pointer-events:none;z-index:10;
-  border:1px solid rgba(255,255,255,.12);
-}
-.placa-wrap .transp-tip::after{
-  content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);
-  border:4px solid transparent;border-top-color:#1e293b;
-}
-.placa-wrap:hover .transp-tip,
-.placa-wrap.tip-open .transp-tip{ display:block; }
-.placa{
-  font-family:'Barlow Condensed',sans-serif;font-weight:800;
-  font-size:12px;letter-spacing:.2px;white-space:nowrap;
-}
-.reversa-tag{
-  display:inline-flex;align-items:center;gap:3px;
-  font-size:8px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;
-  padding:2px 6px;border-radius:10px;white-space:nowrap;flex-shrink:0;
-}
-.reversa-tag.mp  {background:#7c3aed;color:#fff}
-.reversa-tag.pkg {background:#0369a1;color:#fff}
+  footer.note {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px 40px;
+    color: var(--text-faint);
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
 
-/* ── YMS manual edit ────────────────────────────────────────────── */
-td.td-yms{ position:relative; }
-.yms-val{
-  cursor:pointer;font-weight:700;
-  border-bottom:1px dashed var(--text3);
-}
-.yms-val:hover{ color:var(--accent); border-bottom-color:var(--accent); }
-.yms-edit{
-  cursor:pointer;color:var(--text3);font-size:10px;
-  border-bottom:1px dashed transparent;
-}
-.yms-edit:hover{ color:var(--accent);border-bottom-color:var(--accent); }
-.yms-popup{
-  position:absolute;z-index:50;
-  background:var(--bg2);border:1px solid var(--border);
-  border-radius:8px;padding:6px 8px;
-  box-shadow:var(--shadow-lg);
-  display:flex;align-items:center;gap:6px;
-  top:calc(100% + 4px);left:50%;transform:translateX(-50%);
-  white-space:nowrap;
-}
-.yms-popup input[type=time]{
-  border:1px solid var(--border);border-radius:5px;
-  background:var(--bg3);color:var(--text);
-  font-size:12px;font-family:'Barlow',sans-serif;font-weight:700;
-  padding:3px 5px;outline:none;width:90px;
-}
-.yms-popup button{
-  border:none;border-radius:5px;padding:3px 8px;
-  font-size:11px;font-weight:700;font-family:'Barlow',sans-serif;cursor:pointer;
-}
-.yms-popup .yms-ok { background:var(--accent);color:#fff; }
-.yms-popup .yms-cl { background:var(--bg4);color:var(--text2); }
-/* ── Data anterior (carretas do dia anterior) ───────────────────── */
-.date-group0{
-  display:flex;align-items:center;gap:6px;
-  background:var(--bg3);border-radius:8px;padding:6px 10px;
-  border:1.5px solid #b4522055;
-}
-.date-group0 label{font-size:11px;font-weight:700;color:#fb923c;white-space:nowrap}
-#datePicker0{
-  border:none;background:transparent;color:var(--text);
-  font-size:13px;font-family:'Barlow',sans-serif;font-weight:600;
-  cursor:pointer;outline:none;
-}
-.btn-date0-toggle{
-  border:1px solid var(--border);background:var(--bg3);color:var(--text3);
-  border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;
-  font-family:'Barlow',sans-serif;cursor:pointer;white-space:nowrap;
-  transition:background .15s,color .15s,border-color .15s;
-}
-.btn-date0-toggle.on{background:#7c2d12;border-color:#b45220;color:#fff}
-.btn-date0-toggle:hover:not(.on){border-color:#b45220;color:#fb923c}
+  .toast {
+    position: fixed;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(0);
+    background: var(--text);
+    color: var(--bg);
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    box-shadow: var(--shadow);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
 
-/* ── Segunda data (carretas antecipadas) ────────────────────────── */
-.date-group2{
-  display:flex;align-items:center;gap:6px;
-  background:var(--bg3);border-radius:8px;padding:6px 10px;
-  border:1.5px solid #7c3aed55;
-}
-.date-group2 label{font-size:11px;font-weight:700;color:#a78bfa;white-space:nowrap}
-#datePicker2{
-  border:none;background:transparent;color:var(--text);
-  font-size:13px;font-family:'Barlow',sans-serif;font-weight:600;
-  cursor:pointer;outline:none;
-}
-.btn-date2-toggle{
-  border:1px solid var(--border);background:var(--bg3);color:var(--text3);
-  border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;
-  font-family:'Barlow',sans-serif;cursor:pointer;white-space:nowrap;
-  transition:background .15s,color .15s,border-color .15s;
-}
-.btn-date2-toggle.on{background:#4c1d95;border-color:#7c3aed;color:#fff}
-.btn-date2-toggle:hover:not(.on){border-color:#7c3aed;color:#a78bfa}
+  @media (max-width: 1000px) {
+    .kpi-row { grid-template-columns: repeat(3, 1fr); }
+    .group-row { grid-template-columns: repeat(2, 1fr); }
+    /* Abaixo de 1000px a tabela (min-width: 1180px) não cabe mais na tela —
+       em vez de deixar a página inteira rolar na horizontal, o scroll (X e Y)
+       fica contido dentro do próprio card da tabela, e o cabeçalho continua
+       "grudado" no topo enquanto rola dentro dele. */
+    .table-wrap {
+      overflow: auto;
+      max-height: 75vh;
+      -webkit-overflow-scrolling: touch;
+    }
+  }
 
-/* Linha de carreta antecipada — só o fundo lilás, texto normal do tema */
-tr.ant td{ background:#f3f0ff !important; color:var(--text) !important; }
+  @media (max-width: 600px) {
+    html, body { overflow-x: hidden; }
+    .topbar { padding: 8px 14px; flex-wrap: wrap; row-gap: 4px; }
+    .topbar .brand-logo { height: 18px; }
+    header.page { padding: 16px 14px 4px; }
+    header.page h1 { font-size: 19px; }
+    main { padding: 12px 14px 40px; gap: 14px; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .kpi { padding: 10px 10px; }
+    .kpi .value { font-size: 20px; }
+    .toolbar { gap: 8px; }
+    .toolbar .search { min-width: 0; max-width: none; flex: 1 1 100%; }
+    .tabs { flex: 1 1 100%; justify-content: center; }
+    footer.note { padding: 0 14px 30px; flex-direction: column; gap: 4px; }
 
-/* Status das antecipadas: igual ao status normal (sem override de roxo) */
-tr.ant td.td-status{ background:unset !important; color:unset !important; }
-tr.ant td.td-status select{ background:transparent !important; color:inherit !important; border-color:rgba(0,0,0,.15) !important; }
+    /* Tabela vira uma lista de cartões (um por origem) em vez de rolar na
+       horizontal — cada célula é exibida como "rótulo: valor" empilhado,
+       usando o data-label de cada <td>. Assim ela cabe inteira na largura
+       da tela, sem cortar nenhuma coluna. */
+    .table-wrap { overflow: visible; max-height: none; border: none; box-shadow: none; background: transparent; }
+    table { min-width: 0; width: 100%; }
+    thead { display: none; }
+    table, tbody, tfoot, tr, td { display: block; }
+    tbody tr, tfoot tr {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 10px 14px 4px;
+      margin-bottom: 10px;
+    }
+    tbody td, tfoot td {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px dashed var(--border);
+      text-align: right;
+    }
+    tbody tr td:last-child, tfoot tr td:last-child { border-bottom: none; }
+    tbody td::before, tfoot td::before {
+      content: attr(data-label);
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-faint);
+      flex-shrink: 0;
+    }
+    tbody td:first-child {
+      display: block;
+      position: absolute; top: 6px; right: 6px;
+      padding: 0; border-bottom: none;
+    }
+    tbody td.col-origem, tfoot td.col-origem {
+      display: block;
+      text-align: left;
+      font-size: 14.5px;
+      padding: 2px 34px 10px 0;
+      border-bottom: 1px solid var(--border-strong);
+      margin-bottom: 2px;
+    }
+    tbody td.col-origem::before, tfoot td.col-origem::before { content: none; }
+    tbody td[data-label="Status"], tbody td[data-label="Observação"] {
+      display: block; text-align: left;
+    }
+    tbody td[data-label="Status"]::before, tbody td[data-label="Observação"]::before {
+      display: block; margin-bottom: 5px;
+    }
+    td[data-label="Observação"] input[type="text"] { width: 100%; min-width: 0; text-align: left; }
+    tbody td[data-label="Status"] .status-fill-wrap { display: block; width: 100%; }
+    tbody td[data-label="Status"] select.status-select { width: 100%; text-align: left; text-align-last: left; }
+    .empty-state { margin: 0 10px; }
+  }
 
-/* Antecipada CONCLUÍDA: verde só na célula de status */
-tr.ant.st-Concluida td.td-status{ background:var(--st-concluida-bg) !important; color:var(--st-concluida-text) !important; }
-tr.ant.st-Concluida td.td-status select{ background:transparent !important; color:inherit !important; border-color:rgba(0,0,0,.15) !important; }
-
-/* Antecipada NÃO CHEGOU: vermelho claro só na célula de status */
-tr.ant.st-NaoChegou td.td-status{ background:var(--st-naochegou-bg) !important; color:var(--st-naochegou-text) !important; }
-tr.ant.st-NaoChegou td.td-status select{ background:transparent !important; color:inherit !important; border-color:rgba(0,0,0,.15) !important; }
-
-/* Todos os demais status das antecipadas usam as mesmas cores dos normais */
-tr.ant.st-Descarga   td.td-status{ background:var(--st-descarga-bg)   !important; color:var(--st-descarga-text)   !important; }
-tr.ant.st-Docada     td.td-status{ background:var(--st-docada-bg)     !important; color:var(--st-docada-text)     !important; }
-tr.ant.st-Fos        td.td-status{ background:var(--st-fos-bg)        !important; color:var(--st-fos-text)        !important; }
-tr.ant.st-Aguardando td.td-status{ background:var(--st-aguardando-bg) !important; color:var(--st-aguardando-text) !important; }
-tr.ant.st-Bloqueada  td.td-status{ background:var(--st-bloqueada-bg)  !important; color:var(--st-bloqueada-text)  !important; }
-
-.antecip-badge{
-  display:inline-block;font-size:7px;font-weight:800;letter-spacing:.4px;
-  text-transform:uppercase;padding:1px 5px;border-radius:8px;
-  background:#7c3aed;color:#fff;margin-top:1px;white-space:nowrap;
-}
-
-td.td-doca, td.td-status, td.td-perfil { text-align:center !important; }
-td.td-doca select, td.td-perfil select, td.td-status select {
-  text-align:center; text-align-last:center;
-}
-td.td-rev { overflow:visible; padding:3px 2px; vertical-align:middle; }
-td.td-placa { overflow:visible; white-space:normal; }
-
-/* ── Selects dentro da tabela ───────────────────────────────────── */
-td select{
-  border:1px solid var(--border);
-  border-radius:4px;
-  padding:2px 1px;
-  font-size:10px;font-family:'Barlow',sans-serif;font-weight:600;
-  cursor:pointer;
-  background:var(--bg2);
-  color:var(--text);
-  outline:none;
-  width:100%;max-width:100%;
-  display:block;
-  transition:box-shadow .15s;
-  -webkit-appearance:auto;appearance:auto;
-  text-overflow:ellipsis;overflow:hidden;
-  color-scheme: light;
-}
-td select option{
-  background:#ffffff;
-  color:#1a1d27;
-}
-td select:focus{box-shadow:0 0 0 2px var(--accent);outline:none}
-/* Select dentro da célula de status herda cor do status */
-td.td-status select{
-  background:transparent;color:inherit;
-  border-color:rgba(0,0,0,.15);font-weight:700;
-  border-radius:6px;
-}
-#printArea{background:var(--bg);border-radius:0;padding:0}
-
-/* Subtle zebra striping since rows no longer carry status BG */
-tbody tr:nth-child(even) td{background:var(--bg3)}
-tbody tr:nth-child(odd)  td{background:var(--bg2)}
-tbody tr:hover td{background:var(--bg4) !important}
-@keyframes saved-flash{
-  0%  {outline:2px solid #4ade80;outline-offset:1px}
-  100%{outline:2px solid transparent}
-}
-.saved{animation:saved-flash .7s ease-out}
-
-/* ── Linha oculta ───────────────────────────────────────────────── */
-tr.row-hidden{ display:none; }
-.btn-ocultar{
-  display:inline-flex;align-items:center;justify-content:center;
-  width:16px;height:16px;border-radius:4px;cursor:pointer;
-  font-size:10px;line-height:1;
-  border:1px solid var(--border);background:var(--bg3);color:var(--text3);
-  transition:background .15s,color .15s;vertical-align:middle;margin-left:2px;
-}
-.btn-ocultar:hover{ background:var(--bg4);color:var(--accent); }
-.btn-ocultar.oculto{ background:#f87171;border-color:#dc2626;color:#fff; }
-
-/* ── Empty state ────────────────────────────────────────────────── */
-.empty-msg{padding:36px 20px;color:var(--text3);font-size:14px;text-align:center;line-height:2}
-.empty-msg strong{color:var(--text2)}
-
-/* ── Overlay ────────────────────────────────────────────────────── */
-#overlay{
-  display:none;position:fixed;inset:0;
-  background:rgba(0,0,0,.6);backdrop-filter:blur(4px);
-  z-index:999;align-items:center;justify-content:center;
-  flex-direction:column;gap:16px;color:#fff;font-size:16px;font-weight:700;
-}
-#overlay.show{display:flex}
-.spin{
-  width:48px;height:48px;
-  border:4px solid rgba(255,255,255,.2);
-  border-top-color:var(--accent);
-  border-radius:50%;animation:rot .7s linear infinite;
-}
-@keyframes rot{to{transform:rotate(360deg)}}
-
-/* ── Toast ──────────────────────────────────────────────────────── */
-#toast{
-  position:fixed;bottom:20px;right:16px;
-  background:var(--bg2);color:var(--text);border-radius:10px;
-  padding:10px 16px;font-size:13px;font-weight:600;
-  box-shadow:var(--shadow-lg);
-  transform:translateY(80px);opacity:0;
-  transition:transform .3s,opacity .3s,background .3s,color .3s;
-  z-index:1000;max-width:280px;
-  display:flex;align-items:center;gap:8px;
-  border:1px solid var(--border);
-  border-left:4px solid var(--accent);
-}
-#toast.show{transform:translateY(0);opacity:1}
-#toast.ok {border-left-color:#4ade80}
-#toast.err{border-left-color:#f87171}
-
-/* ── Responsive ─────────────────────────────────────────────────── */
-@media(max-width:640px){
-  .app{padding:6px}
-  .dashboard{grid-template-columns:repeat(2,1fr);gap:8px}
-  .topbar{flex-direction:column;align-items:stretch}
-  .topbar-right{margin-left:0;justify-content:flex-end}
-  .file-label{justify-content:center}
-  .date-group{justify-content:center}
-  .btn-group{justify-content:center}
-  .header-title small{display:none}
-  thead th{font-size:9px;padding:7px 2px;letter-spacing:0}
-  tbody td{font-size:10px;padding:4px 2px}
-  td select{font-size:9px;padding:1px 1px}
-  .placa{font-size:11px}
-}
-@media(max-width:380px){
-  .sync-badge{display:none}
-  .card-label{font-size:9px}
-}
+  @media print {
+    @page { size: landscape; margin: 12mm; }
+    /* Força o navegador a imprimir cores de fundo (pílulas de status/pendentes,
+       bolinha do grupo, swatch do card, faixa amarela do cabeçalho etc.) —
+       sem isso o Chrome descarta "gráficos de fundo" na impressão e a tabela
+       sai em preto e branco, diferente do que aparece ao vivo na tela. */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { background: #fff; color: #111; }
+    .toolbar, footer.note, .toast, .save-indicator { display: none !important; }
+    header.page { padding: 0 0 10px; }
+    main { padding: 0; gap: 12px; }
+    .kpi, .group-card, .table-wrap { box-shadow: none !important; border: 1px solid #ccc !important; }
+    thead th, tfoot td { background: #ffe600 !important; color: #3a3300 !important; }
+    tbody tr.zero-pending { display: none; }
+    .fill-handle { display: none !important; }
+    td input, td select:not(.status-select) {
+      border: none !important; background: transparent !important; color: #111 !important;
+      appearance: none; padding: 2px 4px;
+    }
+    td input::placeholder { color: transparent; }
+    /* Status mantém a mesma cor por tom da tela (ex.: Em Expedição em azul) —
+       sem isso o print (via td select acima) apagava a cor de fundo/texto. */
+    select.status-select {
+      border: none !important; appearance: none; padding: 2px 4px;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    select.status-select.s-good { background-color: var(--good-soft) !important; color: var(--good) !important; }
+    select.status-select.s-info { background-color: var(--info-soft) !important; color: var(--info) !important; }
+    select.status-select.s-warn { background-color: var(--warn-soft) !important; color: var(--warn) !important; }
+    select.status-select.s-critical { background-color: var(--critical-soft) !important; color: var(--critical) !important; }
+    select.status-select.s-muted { background-color: var(--muted-chip-soft) !important; color: var(--muted-chip) !important; }
+    .table-wrap { max-height: none !important; overflow: visible !important; }
+    table { min-width: 0; }
+  }
 </style>
-</head>
-<body>
 
-<div id="overlay"><div class="spin"></div><span id="overlayMsg">Carregando…</span></div>
-<div id="toast"><span id="toastMsg">Salvo</span></div>
+<div class="topbar">
+  <svg class="brand-logo" role="img" aria-label="Mercado Libre" xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 812.049 199.625" id="mercado-libre"><defs><clipPath id="a" clipPathUnits="userSpaceOnUse"><path d="M0 595.28h841.89V0H0Z" fill="#000000"></path></clipPath></defs><g clip-path="url(#a)" transform="matrix(1.33333 0 0 -1.33333 -156.587 518.874)"><path d="M0 0c0 38.238-47.506 69.407-106.113 69.407-58.604 0-106.111-31.169-106.111-69.407 0-.986-.013-3.716-.013-4.063 0-40.564 41.524-73.419 106.109-73.419C-41.142-77.482 0-44.636 0-4.071Z" transform="translate(329.677 316.919)" fill="#2d3277" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0c0-36.048-45.681-65.271-102.031-65.271-56.352 0-102.028 29.223-102.028 65.271 0 36.052 45.676 65.276 102.028 65.276C-45.681 65.276 0 36.052 0 0" transform="translate(325.614 316.953)" fill="#ffe600" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0c-.055-.103-1.072-1.156-.413-2.002C1.199-4.059 6.17-5.238 11.199-4.111c2.995.673 6.831 3.727 10.551 6.676 4.029 3.202 8.028 6.407 12.047 7.682 4.255 1.354 6.981.774 8.782.228 1.977-.589 4.299-1.89 8.006-4.671C57.566.556 85.642-23.947 90.49-28.185c3.906 1.766 21.264 9.239 44.858 14.44-2.048 12.578-9.702 24.084-21.304 33.507-16.169-6.792-35.934-10.336-55.261-.898-.098.041-10.559 4.992-20.877 4.748C22.574 23.257 15.933 16.62 8.9 9.594Z" transform="translate(189.705 337.547)" fill="#fff" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0c-.328.293-33.01 28.887-40.411 34.452-4.285 3.213-6.669 4.033-9.171 4.351-1.302.169-3.103-.073-4.36-.417-3.444-.937-7.947-3.948-11.945-7.118-4.141-3.297-8.042-6.402-11.665-7.213-4.625-1.037-10.276.187-12.854 1.93-1.047.702-1.781 1.514-2.135 2.339-.951 2.209.807 3.974 1.094 4.27l9.018 9.754a188.323 188.323 0 0 0 3.184 3.124c-2.911-.379-5.599-1.122-8.217-1.851-3.267-.919-6.41-1.792-9.589-1.791-1.328 0-8.441 1.166-9.79 1.533-8.161 2.234-15.324 4.409-26.024 9.403-12.818-9.543-21.393-21.476-23.868-34.62 1.84-.488 4.81-1.371 6.055-1.648 29.012-6.451 38.05-13.097 39.688-14.482 1.775 1.972 4.334 3.223 7.192 3.223 3.212-.004 6.104-1.617 7.861-4.109 1.663 1.311 3.954 2.433 6.916 2.432 1.345 0 2.742-.249 4.151-.728 3.271-1.123 4.96-3.302 5.838-5.273a9.685 9.685 0 0 0 4.037.856c1.562 0 3.187-.356 4.825-1.065 5.349-2.295 6.183-7.55 5.696-11.512.382.046.765.062 1.154.062 6.342-.003 11.499-5.158 11.499-11.504 0-1.963-.502-3.81-1.374-5.429 1.724-.971 6.124-3.167 9.986-2.678 3.085.392 4.256 1.444 4.677 2.038.287.407.591.883.306 1.225l-8.185 9.094s-1.348 1.275-.902 1.768c.462.506 1.292-.219 1.883-.714 4.167-3.479 9.253-8.731 9.253-8.731.085-.055.424-.719 2.304-1.056 1.621-.29 4.485-.123 6.471 1.505.5.413 1.001.93 1.419 1.457-.031-.022-.06-.06-.09-.073 2.093 2.68-.233 5.39-.233 5.39l-9.558 10.732s-1.365 1.263-.902 1.772c.417.441 1.296-.224 1.894-.722 3.028-2.531 7.304-6.823 11.399-10.835.798-.588 4.403-2.812 9.169.32 2.897 1.895 3.477 4.228 3.395 5.987-.201 2.328-2.019 3.989-2.019 3.989L-25.983 2.561s-1.378 1.179-.889 1.775c.395.5 1.294-.222 1.879-.714 4.16-3.479 15.419-13.8 15.419-13.8.157-.114 4.048-2.883 8.855.177C1-8.902 2.098-7.245 2.191-5.322 2.356-1.982 0 0 0 0" transform="translate(279.054 306.698)" fill="#fff" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0c-2.024.024-4.24-1.179-4.53-1.004-.158.107.125.919.315 1.387.194.468 2.86 8.489-3.638 11.274-4.973 2.137-8.01-.266-9.056-1.351-.275-.286-.397-.262-.428.101-.1 1.443-.746 5.351-5.04 6.658-6.132 1.881-10.076-2.402-11.077-3.946-.447 3.495-3.404 6.209-7.025 6.213a7.119 7.119 0 1 1-.006-14.236 7.06 7.06 0 0 1 4.922 1.986c.04-.035.056-.103.035-.239-.299-1.761-.85-8.161 5.85-10.765 2.688-1.042 4.973-.268 6.867 1.061.567.399.657.232.577-.301-.243-1.647.064-5.169 5.004-7.171 3.759-1.526 5.983.038 7.44 1.384.634.58.808.484.84-.41.179-4.765 4.136-8.545 8.94-8.548 4.949-.003 8.959 3.999 8.964 8.944C8.958-4.013 4.948-.055 0 0" transform="translate(215.733 290.06)" fill="#fff" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0c-4.486.005-8.132 3.487-8.296 7.929-.014.383-.052 1.395-.908 1.395-.353 0-.658-.211-1.011-.528-.986-.916-2.243-1.844-4.077-1.844-.834 0-1.735.192-2.688.583-4.738 1.917-4.802 5.172-4.608 6.48.051.35.068.711-.171.996l-.289.26h-.297c-.242 0-.488-.099-.825-.337-1.372-.96-2.684-1.428-4.021-1.428a6.28 6.28 0 0 0-2.246.437c-6.235 2.429-5.742 8.316-5.438 10.088.046.358-.044.637-.272.822l-.441.363-.412-.396a6.418 6.418 0 0 0-4.477-1.811c-3.571.003-6.478 2.907-6.476 6.476a6.482 6.482 0 0 0 6.486 6.471c3.227 0 5.976-2.428 6.389-5.652l.22-1.739.955 1.47c.108.174 2.724 4.131 7.537 4.126.914 0 1.86-.147 2.811-.441 3.835-1.171 4.485-4.649 4.586-6.097.068-.846.669-.884.786-.884.331 0 .576.208.748.392a6.542 6.542 0 0 0 4.769 2.01c1.127-.002 2.329-.269 3.57-.804C-2 25.722-4.765 17.976-4.798 17.894c-.525-1.284-.544-1.85-.052-2.178l.241-.112h.175c.276 0 .618.118 1.182.309.83.287 2.083.72 3.253.717h.003c4.59-.052 8.322-3.786 8.319-8.323C8.317 3.723 4.584 0 0 0m64.583 37.33c-10.065 8.787-33.33 29.012-39.63 33.743-3.601 2.706-6.056 4.136-8.211 4.779-.97.292-2.308.625-4.033.627-1.605 0-3.325-.29-5.122-.862-4.071-1.288-8.128-4.513-12.052-7.631l-.202-.16c-3.656-2.905-7.434-5.911-10.292-6.549a17.375 17.375 0 0 0-3.812-.427c-3.2.005-6.077.927-7.156 2.304-.178.227-.063.596.353 1.125l.054.071 8.855 9.543c6.938 6.936 13.489 13.484 28.568 13.832.251.006.505.01.755.01 9.385-.006 18.769-4.208 19.821-4.695 8.803-4.291 17.887-6.473 27.021-6.481 9.517-.003 19.336 2.353 29.662 7.108a82.382 82.382 0 0 1-3.589 2.84c-9.07-3.933-17.712-5.921-26.047-5.917-8.516.007-17.027 2.052-25.287 6.082-.435.208-10.797 5.093-21.576 5.099-.282 0-.571-.006-.852-.009-12.667-.296-19.803-4.796-24.6-8.736-4.667-.112-8.693-1.239-12.275-2.239-3.196-.888-5.957-1.66-8.65-1.657-1.108 0-3.105.101-3.285.107-3.096.095-18.692 3.921-31.101 8.617a82.258 82.258 0 0 1-3.673-2.765c12.962-5.315 28.737-9.425 33.715-9.748 1.384-.09 2.861-.247 4.338-.25 3.294 0 6.578.925 9.762 1.814 1.878.529 3.953 1.102 6.131 1.52-.581-.57-1.161-1.15-1.742-1.736l-9-9.732c-.71-.714-2.244-2.623-1.232-4.973.403-.948 1.221-1.854 2.364-2.626 2.146-1.443 5.985-2.419 9.551-2.422 1.352 0 2.632.134 3.81.399 3.771.847 7.727 3.997 11.918 7.329 3.34 2.654 8.085 6.023 11.718 7.012 1.013.277 2.258.447 3.262.447.299-.002.58-.011.845-.048 2.399-.305 4.72-1.122 8.863-4.231 7.383-5.548 40.069-34.138 40.387-34.421.025-.019 2.106-1.817 1.961-4.805-.077-1.665-1.003-3.146-2.61-4.174-1.395-.882-2.835-1.334-4.291-1.334-2.185.005-3.688 1.029-3.785 1.098-.12.098-11.318 10.366-15.437 13.814-.658.544-1.294 1.033-1.941 1.033a1.062 1.062 0 0 1-.855-.403c-.648-.798.078-1.904.933-2.631l13.083-13.148c.016-.016 1.627-1.528 1.805-3.544.102-2.18-.938-4.001-3.105-5.424-1.544-1.014-3.108-1.531-4.637-1.531-2.008 0-3.418.916-3.729 1.132l-1.878 1.849c-3.429 3.375-6.97 6.863-9.561 9.027-.632.525-1.308 1.009-1.952 1.009-.315 0-.603-.118-.823-.349-.297-.329-.501-.92.235-1.899.302-.403.659-.737.659-.737l9.548-10.718c.079-.096 1.967-2.339.213-4.577l-.335-.426a8.92 8.92 0 0 0-.888-.854c-1.627-1.338-3.803-1.482-4.663-1.482-.463 0-.907.041-1.294.109-.94.17-1.573.433-1.878.796l-.117.117c-.521.542-5.333 5.452-9.314 8.775-.525.44-1.178.996-1.856.996-.333 0-.633-.131-.861-.386-.789-.864.396-2.152.897-2.626l8.142-8.977c-.01-.082-.114-.268-.311-.552-.292-.4-1.279-1.387-4.233-1.762a8.965 8.965 0 0 0-1.078-.063c-3.046 0-6.293 1.478-7.968 2.367a12.1 12.1 0 0 1 1.156 5.161c.005 6.701-5.437 12.149-12.138 12.155-.142 0-.294-.006-.439-.011.22 3.06-.212 8.852-6.158 11.404-1.71.741-3.418 1.117-5.077 1.117a10.35 10.35 0 0 1-3.724-.673c-1.23 2.393-3.276 4.137-5.945 5.048-1.473.51-2.94.767-4.357.767-2.474 0-4.754-.726-6.788-2.173-1.947 2.42-4.891 3.857-7.99 3.857-2.71 0-5.319-1.086-7.251-2.999-2.533 1.934-12.586 8.32-39.489 14.428-1.303.295-4.293 1.153-6.126 1.689a43.295 43.295 0 0 1-.688-4.415s4.963-1.188 5.939-1.406c27.483-6.105 36.564-12.453 38.1-13.652a10.376 10.376 0 0 1-.793-3.955c-.003-5.674 4.614-10.3 10.296-10.306.638 0 1.269.054 1.891.17.855-4.177 3.588-7.345 7.768-8.969 1.219-.471 2.456-.711 3.668-.711a9.393 9.393 0 0 1 2.345.292c.771-1.961 2.51-4.403 6.391-5.979 1.359-.549 2.721-.836 4.045-.836a8.98 8.98 0 0 1 3.145.563A12.149 12.149 0 0 1-.003-3.827 12.128 12.128 0 0 1 8.699-.14c1.959-1.091 6.101-3.06 10.28-3.069.542 0 1.051.038 1.557.102 4.153.525 6.087 2.146 6.974 3.41.159.219.304.454.427.695.982-.279 2.06-.509 3.294-.512 2.268 0 4.444.772 6.646 2.374 2.161 1.563 3.698 3.797 3.918 5.703.004.025.011.055.014.083.726-.151 1.474-.23 2.222-.23 2.334 0 4.629.73 6.824 2.166 4.234 2.776 4.97 6.403 4.9 8.774a11.028 11.028 0 0 1 2.25-.235c2.194 0 4.346.662 6.398 1.97 2.623 1.677 4.202 4.245 4.44 7.235.167 2.032-.338 4.081-1.408 5.842 7.092 3.056 23.305 8.971 42.395 13.272a43.48 43.48 0 0 1-.592 4.397c-23.1-5.126-40.336-12.585-44.655-14.507" transform="translate(215.733 272.79)" fill="#2d3277" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0v-31.213h-12.467v28.721c0 13.946 7.019 20.871 20.964 20.871 6.279 0 11.081-1.385 14.59-4.155 3.511 2.678 8.311 3.97 14.593 3.97 13.946 0 20.872-6.925 20.779-20.87v-28.723h-6.373c-4.063.279-6.094 2.217-6.094 6.096V-.184c-.277 5.08-3.049 7.574-8.497 7.574s-8.221-2.494-8.311-7.574v-31.029H16.809V0c-.279 5.081-3.047 7.574-8.496 7.574C2.863 7.574.092 5.081 0 0" transform="translate(372.385 355.185)" fill="#2d3277" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0c.369 15.793 8.172 24.571 24.519 24.571h3.708V11.827l-5.708-.123c-6.835 0-10.052-4.407-10.052-11.518v-25.397H0Z" transform="translate(491.065 348.993)" fill="#2d3277" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0v3.998c-2.863-1.201-6.188-1.691-9.79-2.429-4.894-.924-7.389-3.233-7.389-6.834.278-3.879 2.31-5.725 6.188-5.725C-4.156-10.99 0-6.926 0 0m-16.38 13.811-11.437.013c.437 9.438 5.187 15.728 19.135 15.728 13.484 0 20.319-4.433 20.596-13.484V-.555c0-13.483-8.127-19.486-21.335-20.409-11.727-.923-19.855 4.525-19.855 15.33.277 11.73 8.774 14.868 21.149 16.069 5.264.646 7.942 2.217 7.942 4.894-.277 2.771-2.863 4.09-7.942 4.156-5.753.076-7.606-3.365-8.253-5.674" transform="translate(604.442 344.432)" fill="#2d3277" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0c-.092-9.883 3.231-14.869 10.251-14.869 7.018 0 10.526 4.986 10.526 14.869-.276 9.42-3.692 14.038-10.342 14.038C3.787 14.038.367 9.42 0 0m32.968 40.619V-3.418c0-14.683-7.665-21.979-22.903-21.887-15.145.279-22.719 8.497-22.719 24.75 0 16.623 6.465 25.12 19.486 25.582 6.097 0 10.808-2.494 13.945-7.573v15.571l.03 1.375c4.062 6.062 12.161 6.219 12.161 6.219" transform="translate(636.068 348.537)" fill="#2d3277" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0h3.215v-64.7H-9.067v56.795C-9.067-6.062-5.25 0 0 0" transform="translate(450.313 316.343)" fill="#2d3277" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0c-7.02 0-10.345 4.985-10.252 14.867.37 9.421 3.787 14.038 10.437 14.038 6.649 0 10.065-4.617 10.343-14.038C10.528 4.985 7.019 0 0 0m3.6 39.895c-6.093 0-10.712-2.494-13.852-7.573l-.002 21.94h-1.391c-6.125-.074-9.343-3.344-10.889-6.016v.422V11.45c0-14.682 7.665-21.979 22.903-21.888 15.147.28 22.718 8.498 22.718 24.751 0 16.623-6.465 25.121-19.487 25.582" transform="translate(513.629 262.081)" fill="#2d3277" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0c-1.565 1.717-3.945 2.578-7.137 2.578-2.087 0-3.82-.354-5.201-1.059-1.381-.707-2.486-1.581-3.314-2.624-.829-1.044-1.413-2.149-1.75-3.315-.338-1.166-.537-2.209-.598-3.13H3.268C2.654-4.236 1.564-1.72 0 0m-14.777-25.043c1.963-1.904 4.787-2.855 8.469-2.855 2.639 0 4.912.659 6.814 1.98 1.901 1.319 3.068 2.716 3.498 4.189h11.51c-1.842-5.708-4.665-9.791-8.471-12.245-3.807-2.456-8.41-3.683-13.811-3.683-3.744 0-7.121.598-10.128 1.795-3.008 1.197-5.555 2.901-7.641 5.11-2.088 2.21-3.699 4.848-4.834 7.919-1.137 3.067-1.703 6.444-1.703 10.127 0 3.559.582 6.873 1.749 9.944 1.165 3.068 2.823 5.722 4.971 7.964 2.149 2.24 4.71 4.005 7.689 5.294 2.976 1.289 6.274 1.933 9.897 1.933 4.051 0 7.58-.783 10.588-2.347 3.007-1.565 5.479-3.669 7.412-6.307 1.934-2.64 3.329-5.648 4.19-9.024.858-3.376 1.165-6.905.92-10.587H-18c.184-4.235 1.257-7.306 3.223-9.207" transform="translate(467.522 361.289)" fill="#2d3277" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0c-2.108 0-3.876-.481-5.302-1.441a11.454 11.454 0 0 1-3.486-3.721c-.9-1.52-1.535-3.193-1.907-5.022a27.243 27.243 0 0 1-.558-5.44c0-1.737.186-3.503.558-5.301.372-1.799.976-3.427 1.813-4.883a10.419 10.419 0 0 1 3.395-3.58c1.425-.93 3.162-1.395 5.208-1.395 3.162 0 5.594.884 7.3 2.65 1.705 1.767 2.774 4.139 3.208 7.115h12.742c-.869-6.387-3.348-11.253-7.44-14.601-4.093-3.348-9.332-5.022-15.718-5.022-3.595 0-6.897.604-9.904 1.813-3.008 1.209-5.565 2.898-7.672 5.069-2.109 2.169-3.752 4.758-4.929 7.765-1.178 3.007-1.767 6.308-1.767 9.905 0 3.72.542 7.175 1.628 10.369 1.084 3.193 2.68 5.952 4.789 8.277 2.107 2.325 4.68 4.139 7.719 5.441C-7.286 9.3-3.813 9.951.093 9.951c2.851 0 5.594-.372 8.23-1.116 2.635-.744 4.99-1.876 7.069-3.395A18.198 18.198 0 0 0 20.46-.232c1.302-2.265 2.046-4.946 2.231-8.045H9.765C8.896-2.76 5.641 0 0 0" transform="translate(546.94 364.02)" fill="#2d3277" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0c.372-1.83 1.007-3.473 1.907-4.929a10.138 10.138 0 0 1 3.58-3.488c1.489-.869 3.348-1.302 5.58-1.302 2.233 0 4.107.433 5.626 1.302a10.032 10.032 0 0 1 3.627 3.488C21.219-3.473 21.855-1.83 22.228 0c.372 1.828.557 3.704.557 5.626 0 1.921-.185 3.813-.557 5.673-.373 1.86-1.009 3.502-1.908 4.93-.899 1.425-2.108 2.587-3.627 3.487-1.519.898-3.393 1.348-5.626 1.348-2.232 0-4.091-.45-5.58-1.348-1.488-.9-2.682-2.062-3.58-3.487-.9-1.428-1.535-3.07-1.907-4.93a28.863 28.863 0 0 1-.558-5.673C-.558 3.704-.372 1.828 0 0m-11.997 16.089c1.178 3.13 2.851 5.796 5.022 7.998 2.169 2.2 4.774 3.906 7.812 5.115 3.037 1.209 6.447 1.813 10.23 1.813 3.782 0 7.207-.604 10.277-1.813 3.069-1.209 5.687-2.915 7.858-5.115 2.17-2.202 3.844-4.868 5.023-7.998 1.176-3.131 1.766-6.619 1.766-10.463 0-3.845-.59-7.316-1.766-10.416-1.179-3.101-2.853-5.751-5.023-7.951-2.171-2.202-4.789-3.892-7.858-5.069-3.07-1.177-6.495-1.767-10.277-1.767-3.783 0-7.193.59-10.23 1.767-3.038 1.177-5.643 2.867-7.812 5.069-2.171 2.2-3.844 4.85-5.022 7.951-1.178 3.1-1.767 6.571-1.767 10.416 0 3.844.589 7.332 1.767 10.463" transform="translate(690.486 342.956)" fill="#2d3277" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0c.369 15.793 8.172 24.57 24.519 24.57h3.708V11.827l-5.708-.124c-6.835 0-10.052-4.406-10.052-11.517v-25.397H0Z" transform="translate(543.94 276.993)" fill="#2d3277" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M0 0c-1.565 1.718-3.945 2.578-7.137 2.578-2.087 0-3.82-.353-5.201-1.058-1.381-.708-2.486-1.582-3.314-2.624-.829-1.044-1.413-2.15-1.75-3.316-.338-1.166-.537-2.209-.598-3.129H3.268C2.654-4.235 1.564-1.719 0 0m-14.777-25.043c1.963-1.903 4.787-2.854 8.469-2.854 2.639 0 4.912.659 6.814 1.979 1.901 1.319 3.068 2.717 3.498 4.189h11.51c-1.842-5.708-4.665-9.791-8.471-12.245-3.807-2.456-8.41-3.682-13.811-3.682-3.744 0-7.121.597-10.128 1.795-3.008 1.197-5.555 2.9-7.641 5.109-2.088 2.211-3.699 4.849-4.834 7.919-1.137 3.067-1.703 6.444-1.703 10.128 0 3.559.582 6.873 1.749 9.943 1.165 3.069 2.823 5.723 4.971 7.964 2.149 2.24 4.71 4.005 7.689 5.294 2.976 1.289 6.274 1.934 9.897 1.934 4.051 0 7.58-.784 10.588-2.348 3.007-1.564 5.479-3.668 7.412-6.307 1.934-2.64 3.329-5.648 4.19-9.023.858-3.376 1.165-6.905.92-10.588H-18c.184-4.234 1.257-7.305 3.223-9.207" transform="translate(606.379 289.286)" fill="#2d3277" fill-opacity="1" fill-rule="nonzero" stroke="none"></path><path d="M478.989 305.155h-12.285v11.188h12.285zM478.989 251.643h-12.285v47.888h12.285z" fill="#2d3277" fill-opacity="1" fill-rule="nonzero" stroke="none"></path></g></svg>
+  <span>Monitoramento Last Mile</span>
+  <span class="spacer"></span>
+  <span class="clock num" id="clock"></span>
+</div>
 
-<div class="app">
+<header class="page">
+  <h1>Painel de Expedição</h1>
+  <div class="sub">
+    <span class="stations">Estações: SPA1, SPA2</span>
+    <span class="spacer"></span>
+    <span class="save-indicator"><span class="pulse"></span><span id="save-label">Salvo automaticamente</span></span>
+  </div>
+</header>
 
-  <!-- TOP BAR: controles + status + sync -->
-  <div class="topbar">
-    <label class="file-label">
-      📂 <span id="fileName">Selecionar CSV / XLSX…</span>
-      <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+<main>
+  <section class="kpi-row" id="kpi-row" aria-label="Indicadores gerais"></section>
+
+  <section class="group-row" id="group-row" aria-label="Resumo por origem"></section>
+
+  <section class="toolbar">
+    <label class="search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input type="text" id="search" placeholder="Buscar por origem ou ID..." autocomplete="off">
     </label>
+    <div class="tabs" id="group-tabs"></div>
+    <label class="toggle-field">
+      <input type="checkbox" id="toggle-hide-zero">
+      <span class="toggle-switch"></span>
+      Mostrar só pendentes
+    </label>
+    <span class="spacer"></span>
+    <button class="btn" id="btn-sync">🔄 Sincronizar</button>
+    <button class="btn" id="btn-add">+ Adicionar origem</button>
+    <button class="btn" id="btn-import" title="CSV do painel (Grupo/Origem/...) substitui tudo. CSV com coluna MLP (planejamento de distribuição) atualiza só Planejadas SPA1 do SVC.">⤒ Importar CSV</button>
+    <input type="file" id="file-import" accept=".csv,text/csv" style="display:none">
+    <button class="btn ghost" id="btn-copy-report" title="Copiar report de rotas pendentes (com observações)">📋 Report</button>
+    <button class="btn ghost" id="btn-clear-status-obs" title="Limpar Status, Observação e Backlog de todas as origens">Limpar Status/Obs</button>
+    <button class="btn ghost" id="btn-unlock-all" title="Destravar todos os campos travados manualmente (🔒) e voltar a seguir o valor automático">🔓 Remover travas</button>
+    <button class="btn" id="btn-print">📷 Capturar pendentes</button>
+    <button class="btn primary" id="btn-export">⤓ Baixar para Sheets (CSV)</button>
+  </section>
 
-    <div class="date-group">
-      <label>📅</label>
-      <input type="date" id="datePicker">
-    </div>
-
-    <button id="btnDate0Toggle" class="btn-date0-toggle" title="Ativar placa do dia anterior">🗓 -data</button>
-    <div class="date-group0" id="date0Group" style="display:none">
-      <label>🟠</label>
-      <input type="date" id="datePicker0">
-      <span id="btnAnt0Edit" title="Editar seleção de placas do dia anterior"
-        style="font-size:10px;font-weight:700;color:#fb923c;cursor:pointer;
-        border-bottom:1px dashed #fb923c;white-space:nowrap;">editar</span>
-    </div>
-
-    <button id="btnDate2Toggle" class="btn-date2-toggle" title="Ativar segunda data para carretas antecipadas">🗓 +data</button>
-    <div class="date-group2" id="date2Group" style="display:none">
-      <label>🟣</label>
-      <input type="date" id="datePicker2">
-      <span id="btnAntEdit" title="Editar seleção de placas"
-        style="font-size:10px;font-weight:700;color:#a78bfa;cursor:pointer;
-        border-bottom:1px dashed #a78bfa;white-space:nowrap;">editar</span>
-    </div>
-
-    <div class="btn-group">
-      <button id="btnUpload" class="btn btn-upload">⬆ Enviar</button>
-      <button id="btnPrint"  class="btn btn-print">📸</button>
-      <button id="btnClear"  class="btn btn-clear">🗑</button>
-    </div>
-
-    <span id="uploadStatus">—</span>
-
-    <div class="topbar-right">
-      <div class="sync-badge">
-        <div class="sync-dot" id="syncDot"></div>
-        <span id="syncLabel">Online</span>
-      </div>
-    </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="col-origem" data-sort="origem">Origem<span class="sort-arrow"></span></th>
+          <th class="num" data-sort="backlog">Backlog<span class="sort-arrow"></span></th>
+          <th class="num" data-sort="spa1">Planejadas SPA1<span class="sort-arrow"></span></th>
+          <th class="num" data-sort="spa2">Planejadas SPA2<span class="sort-arrow"></span></th>
+          <th class="num" data-sort="total">Total<span class="sort-arrow"></span></th>
+          <th class="num" data-sort="expedidas">Expedidas<span class="sort-arrow"></span></th>
+          <th class="num" data-sort="pending">Pendentes<span class="sort-arrow"></span></th>
+          <th class="num" data-sort="impactoDit">Impacto DIT<span class="sort-arrow"></span></th>
+          <th class="center-col" data-sort="status">Status<span class="sort-arrow"></span></th>
+          <th class="center-col" data-sort="obs">Observação<span class="sort-arrow"></span></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+      <tfoot>
+        <tr>
+          <td class="col-origem" id="f-count">—</td>
+          <td class="num" id="f-backlog" data-label="Backlog">0</td>
+          <td class="num" id="f-spa1" data-label="Planejadas SPA1">0</td>
+          <td class="num" id="f-spa2" data-label="Planejadas SPA2">0</td>
+          <td class="num" id="f-total" data-label="Total">0</td>
+          <td class="num" id="f-exp" data-label="Expedidas">0</td>
+          <td class="num" id="f-pend" data-label="Pendentes">0</td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+    </table>
+    <div class="empty-state" id="empty-state" style="display:none">Nenhuma origem encontrada para esse filtro.</div>
   </div>
+</main>
 
-  <!-- HEADER + KPI (área do print) -->
-  <div id="printArea">
+<footer class="note">
+  <span>Desenvolvido por: Ezequiel Miranda <span id="auto-sync-info"></span></span>
+  <span>Última edição: <span id="last-edit">—</span></span>
+</footer>
 
-    <!-- Header -->
-    <div class="header">
-      <div class="header-title">
-        🚛 Monitoramento LH SPA1 / SPA2
-        <small></small>
-      </div>
-    </div>
+<div class="toast" id="toast"></div>
 
-    <!-- KPI Cards -->
-    <div class="dashboard">
-      <div class="card card-total">
-        <div class="card-label">Total</div>
-        <div class="card-value" id="kpiTotal">0</div>
-      </div>
-      <div class="card card-ok">
-        <div class="card-label">Concluídas</div>
-        <div class="card-value" id="kpiConcluida">0</div>
-      </div>
-      <div class="card card-desc">
-        <div class="card-label">Descarga Iniciada</div>
-        <div class="card-value" id="kpiDescarga">0</div>
-      </div>
-      <div class="card card-nc">
-        <div class="card-label">Não Chegou</div>
-        <div class="card-value" id="kpiNaoChegou">0</div>
-      </div>
-      <div class="card card-ag">
-        <div class="card-label">Aguardando Doca</div>
-        <div class="card-value" id="kpiAguardando">0</div>
-      </div>
-      <div class="card card-pkg">
-        <div class="card-label">Total Pacotes</div>
-        <div class="card-value" id="kpiPacotes">0</div>
-      </div>
-    </div>
-
-    <!-- Table -->
-    <div class="table-wrap">
-      <div class="table-scroll">
-        <table>
-          <colgroup>
-            <col class="c-num"><col class="c-doca"><col class="c-rev">
-            <col class="c-placa"><col class="c-in"><col class="c-out">
-            <col class="c-pkg"><col class="c-status"><col class="c-perfil">
-          </colgroup>
-          <thead>
-            <tr>
-              <th>#</th><th>DOCA</th><th>HR INICIO</th><th>PLACA</th>
-              <th>YMS IN</th><th>YMS OUT</th><th>PACOTES</th>
-              <th>STATUS</th><th>PERFIL</th>
-            </tr>
-          </thead>
-          <tbody id="tbody">
-            <tr><td colspan="9" class="empty-msg">Carregando dados…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Botão discreto para adicionar placa manual -->
-    <div style="text-align:center;margin-top:8px;padding-bottom:4px;">
-      <button id="btnAddPlaca"
-        style="background:none;border:1px dashed var(--border);border-radius:8px;
-        color:var(--text3);font-size:11px;font-family:'Barlow',sans-serif;font-weight:600;
-        padding:5px 14px;cursor:pointer;transition:color .15s,border-color .15s;"
-        onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'"
-        onmouseout="this.style.color='var(--text3)';this.style.borderColor='var(--border)'"
-        title="Adicionar placa manualmente">+ placa manual</button>
-    </div>
-
-    <!-- Rodapé de suporte -->
-    <div style="text-align:right;padding:6px 10px 2px;font-size:13px;
-      font-family:'Barlow',sans-serif;font-weight:700;
-      color:var(--text2);letter-spacing:.3px;">
-      Suporte: Ezequiel Miranda
-    </div>
-
-  </div><!-- #printArea -->
-
-  <!-- Modal adicionar placa -->
-  <div id="modalPlaca" style="
-    display:none;position:fixed;inset:0;z-index:998;
-    background:rgba(0,0,0,.55);backdrop-filter:blur(3px);
-    align-items:center;justify-content:center;">
-    <div style="
-      background:var(--bg2);border:1px solid var(--border);border-radius:14px;
-      padding:20px 24px;width:min(340px,92vw);box-shadow:var(--shadow-lg);">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;
-        color:var(--text);margin-bottom:14px;letter-spacing:.5px;">
-        ➕ Adicionar Placa Manual
-      </div>
-      <label style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">Placa</label>
-      <input id="inputPlaca" placeholder="Ex: ABC1234" maxlength="10"
-        style="display:block;width:100%;margin:4px 0 12px;padding:8px 10px;
-        border:1px solid var(--border);border-radius:8px;background:var(--bg3);
-        color:var(--text);font-size:14px;font-family:'Barlow Condensed',sans-serif;
-        font-weight:800;letter-spacing:.5px;outline:none;text-transform:uppercase;">
-      <label style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">Transportadora (opcional)</label>
-      <input id="inputTransp" placeholder="Ex: DHL"
-        style="display:block;width:100%;margin:4px 0 16px;padding:8px 10px;
-        border:1px solid var(--border);border-radius:8px;background:var(--bg3);
-        color:var(--text);font-size:13px;font-family:'Barlow',sans-serif;
-        font-weight:600;outline:none;">
-      <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button id="btnModalCancel"
-          style="border:1px solid var(--border);background:none;color:var(--text2);
-          border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;
-          font-family:'Barlow',sans-serif;cursor:pointer;">Cancelar</button>
-        <button id="btnModalAdd"
-          style="border:none;background:var(--accent);color:#fff;
-          border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;
-          font-family:'Barlow',sans-serif;cursor:pointer;">Adicionar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal selecionar placas dia anterior -->
-  <div id="modalAnt0" style="
-    display:none;position:fixed;inset:0;z-index:999;
-    background:rgba(0,0,0,.6);backdrop-filter:blur(3px);
-    align-items:flex-start;justify-content:center;padding-top:40px;">
-    <div style="
-      background:var(--bg2);border:1px solid #b4522055;border-radius:14px;
-      padding:20px 20px;width:min(420px,95vw);box-shadow:var(--shadow-lg);
-      max-height:80vh;display:flex;flex-direction:column;gap:12px;">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;
-        color:var(--text);letter-spacing:.5px;">
-        🟠 Selecionar Placas do Dia Anterior
-      </div>
-      <div style="font-size:11px;color:var(--text2);">
-        Escolha quais placas da data <b id="ant0DateLabel"></b> devem aparecer no painel atual.
-      </div>
-      <div style="display:flex;gap:6px;">
-        <button id="btnAnt0SelectAll"
-          style="border:1px solid var(--border);background:var(--bg3);color:var(--text2);
-          border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;
-          font-family:'Barlow',sans-serif;cursor:pointer;">✔ Todas</button>
-        <button id="btnAnt0ClearAll"
-          style="border:1px solid var(--border);background:var(--bg3);color:var(--text2);
-          border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;
-          font-family:'Barlow',sans-serif;cursor:pointer;">✕ Nenhuma</button>
-      </div>
-      <div id="ant0ListWrap" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px;"></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
-        <button id="btnAnt0Cancel"
-          style="border:1px solid var(--border);background:none;color:var(--text2);
-          border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;
-          font-family:'Barlow',sans-serif;cursor:pointer;">Cancelar</button>
-        <button id="btnAnt0Confirm"
-          style="border:none;background:#b45220;color:#fff;
-          border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;
-          font-family:'Barlow',sans-serif;cursor:pointer;">Confirmar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal selecionar antecipadas -->
-  <div id="modalAntecipad" style="
-    display:none;position:fixed;inset:0;z-index:999;
-    background:rgba(0,0,0,.6);backdrop-filter:blur(3px);
-    align-items:flex-start;justify-content:center;padding-top:40px;">
-    <div style="
-      background:var(--bg2);border:1px solid #7c3aed55;border-radius:14px;
-      padding:20px 20px;width:min(420px,95vw);box-shadow:var(--shadow-lg);
-      max-height:80vh;display:flex;flex-direction:column;gap:12px;">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;
-        color:var(--text);letter-spacing:.5px;">
-        🟣 Selecionar Carretas Antecipadas
-      </div>
-      <div style="font-size:11px;color:var(--text2);">
-        Escolha quais placas da data <b id="ant2DateLabel"></b> devem aparecer como antecipadas no painel.
-      </div>
-      <div style="display:flex;gap:6px;">
-        <button id="btnAntSelectAll"
-          style="border:1px solid var(--border);background:var(--bg3);color:var(--text2);
-          border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;
-          font-family:'Barlow',sans-serif;cursor:pointer;">✔ Todas</button>
-        <button id="btnAntClearAll"
-          style="border:1px solid var(--border);background:var(--bg3);color:var(--text2);
-          border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;
-          font-family:'Barlow',sans-serif;cursor:pointer;">✕ Nenhuma</button>
-      </div>
-      <div id="antListWrap" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px;"></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
-        <button id="btnAntCancel"
-          style="border:1px solid var(--border);background:none;color:var(--text2);
-          border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;
-          font-family:'Barlow',sans-serif;cursor:pointer;">Cancelar</button>
-        <button id="btnAntConfirm"
-          style="border:none;background:#7c3aed;color:#fff;
-          border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;
-          font-family:'Barlow',sans-serif;cursor:pointer;">Confirmar</button>
-      </div>
-    </div>
-  </div>
-
-</div><!-- .app -->
+<!--
+  Bloco atualizado automaticamente pelo Atualizador do Painel (script/executável externo).
+  Não editar manualmente: o conteúdo é sobrescrito a cada sincronização.
+  Formato: {"generatedAt": "ISO-8601 ou null", "rows": [{"grupo","origem","spa1","spa2","expedidas"}, ...]}
+-->
+<script type="application/json" id="live-data">{"generatedAt":"2026-08-13T20:26:58.582Z","rows":[{"grupo":"DC","origem":"BRDPA11404","spa1":6,"spa2":0,"expedidas":6},{"grupo":"DC","origem":"BRDPA11445","spa1":1,"spa2":0,"expedidas":1},{"grupo":"DC","origem":"BRDPA11446","spa1":1,"spa2":0,"expedidas":1},{"grupo":"DC","origem":"BRDPA11448","spa1":2,"spa2":0,"expedidas":2},{"grupo":"DC","origem":"BRDPA11449","spa1":1,"spa2":0,"expedidas":1},{"grupo":"DC","origem":"BRDPA11452","spa1":1,"spa2":0,"expedidas":1},{"grupo":"DC","origem":"BRDPA11459","spa1":1,"spa2":0,"expedidas":1},{"grupo":"DC","origem":"BRDPA193","spa1":2,"spa2":0,"expedidas":2},{"grupo":"DC","origem":"BRDPA26","spa1":1,"spa2":0,"expedidas":1},{"grupo":"NEX","origem":"BRNPA11416","spa1":12,"spa2":0,"expedidas":12},{"grupo":"NEX","origem":"BRNPA11420","spa1":7,"spa2":0,"expedidas":7},{"grupo":"NEX","origem":"BRNPA11425","spa1":19,"spa2":0,"expedidas":19},{"grupo":"NEX","origem":"BRNPA11440","spa1":4,"spa2":0,"expedidas":4},{"grupo":"NEX","origem":"BRNPA11441","spa1":2,"spa2":0,"expedidas":2},{"grupo":"NEX","origem":"BRNPA11447","spa1":2,"spa2":0,"expedidas":2},{"grupo":"NEX","origem":"BRNPA11448","spa1":3,"spa2":0,"expedidas":3},{"grupo":"NEX","origem":"BRNPA11457","spa1":6,"spa2":0,"expedidas":6},{"grupo":"NEX","origem":"BRNPA11458","spa1":1,"spa2":0,"expedidas":1},{"grupo":"NEX","origem":"BRNPA193","spa1":50,"spa2":0,"expedidas":50},{"grupo":"NEX","origem":"BRNPA26","spa1":58,"spa2":0,"expedidas":58},{"grupo":"NEX","origem":"BRNPA535","spa1":18,"spa2":0,"expedidas":18},{"grupo":"NEX","origem":"BRNPA71","spa1":3,"spa2":0,"expedidas":3},{"grupo":"NEX","origem":"BRNPA736","spa1":4,"spa2":0,"expedidas":4},{"grupo":"NEX","origem":"BRNPA75","spa1":31,"spa2":0,"expedidas":31},{"grupo":"NEX","origem":"BRNPA769","spa1":14,"spa2":0,"expedidas":14},{"grupo":"SVC","origem":"50 Mais","spa1":14,"spa2":0,"expedidas":14},{"grupo":"SVC","origem":"BRJTransportes","spa1":43,"spa2":0,"expedidas":43},{"grupo":"SVC","origem":"COOPMETRO","spa1":17,"spa2":0,"expedidas":17},{"grupo":"SVC","origem":"Envios Extra","spa1":11,"spa2":0,"expedidas":11},{"grupo":"SVC","origem":"JL Castro","spa1":12,"spa2":0,"expedidas":12},{"grupo":"SVC","origem":"Kangu Logistics","spa1":32,"spa2":0,"expedidas":32},{"grupo":"SVC","origem":"PANTERA LOG TRAN","spa1":21,"spa2":0,"expedidas":21},{"grupo":"SVC","origem":"RodaCoop","spa1":35,"spa2":0,"expedidas":35},{"grupo":"SVC","origem":"WLS CARGO","spa1":18,"spa2":0,"expedidas":18},{"grupo":"XPT","origem":"EPA1","spa1":54,"spa2":0,"expedidas":54},{"grupo":"XPT","origem":"EPA2","spa1":0,"spa2":37,"expedidas":37},{"grupo":"XPT","origem":"EPA3","spa1":0,"spa2":63,"expedidas":63},{"grupo":"XPT","origem":"EPA4","spa1":0,"spa2":92,"expedidas":92},{"grupo":"XPT","origem":"EPA5","spa1":0,"spa2":72,"expedidas":72},{"grupo":"XPT","origem":"EPA6","spa1":0,"spa2":36,"expedidas":36},{"grupo":"XPT","origem":"EPA7","spa1":0,"spa2":70,"expedidas":70},{"grupo":"XPT","origem":"EPA8","spa1":0,"spa2":35,"expedidas":35},{"grupo":"XPT","origem":"EPA9","spa1":19,"spa2":0,"expedidas":19},{"grupo":"XPT","origem":"ETO4","spa1":0,"spa2":158,"expedidas":158}]}</script>
 
 <script>
-// ── Config ──────────────────────────────────────────────────────────
-const RTDB         = "https://monitoramento-rotas-spa1-default-rtdb.firebaseio.com"
-const CHUNK        = 200
-const POLL_MS      = 10000
+(function () {
+  "use strict";
 
-// ── State ────────────────────────────────────────────────────────────
-let allRows = [], filtered = [], manualMap = {}
-let selectedDate    = todayStr()
-let selectedDate2   = ""
-let date2Active     = false
-let antecipSel      = new Set()   // Route IDs selecionados para mostrar como antecipadas
-let selectedDate0   = ""          // data anterior
-let date0Active     = false
-let ant0Sel         = new Set()   // Route IDs selecionados do dia anterior
-let pollTimer       = null
-let toastTimer      = null
-let lastManualHash  = ""
+  var STORAGE_KEY = "expedicao_spa1_spa2_v1";
+  // Fonte de dados ao vivo: o Atualizador (executável local) grava aqui a cada
+  // ciclo. O painel busca sozinho — funciona tanto localmente quanto publicado
+  // no Cloudflare, sem precisar de CSV manual.
+  var FIREBASE_URL = "https://lastmile-59f9a-default-rtdb.firebaseio.com";
+  var FIREBASE_SYNC_INTERVAL_MS = 15000;
 
-// ── DOM ──────────────────────────────────────────────────────────────
-const $ = id => document.getElementById(id)
+  var CATEGORIES = {
+    XPT: { label: "XPT", color: "var(--cat-xpt)" },
+    SVC: { label: "SVC", color: "var(--cat-svc)" },
+    NEX: { label: "NEX", color: "var(--cat-nex)" },
+    DC:  { label: "DC",  color: "var(--cat-dc)" }
+  };
 
-// ── Event listeners ──────────────────────────────────────────────────
-$("datePicker").value = selectedDate
-$("btnUpload").addEventListener("click",   handleUpload)
-$("btnPrint").addEventListener ("click",   exportImg)
-$("btnClear").addEventListener ("click",   clearAll)
-$("datePicker").addEventListener("change", () => {
-  applyFilter()
-  // Se data2 estiver ativa, atualiza automaticamente para o dia seguinte
-  if (date2Active) {
-    const d = new Date($("datePicker").value + "T12:00:00")
-    d.setDate(d.getDate() + 1)
-    const nextDay = d.toISOString().substring(0,10)
-    $("datePicker2").value = nextDay
-    selectedDate2 = nextDay
-    antecipSel.clear()
-    applyFilter()
-    saveDate2Config()
-  }
-  // Se data0 estiver ativa, atualiza automaticamente para o dia anterior
-  if (date0Active) {
-    const d = new Date($("datePicker").value + "T12:00:00")
-    d.setDate(d.getDate() - 1)
-    const prevDay = d.toISOString().substring(0,10)
-    $("datePicker0").value = prevDay
-    selectedDate0 = prevDay
-    ant0Sel.clear()
-    applyFilter()
-    saveDate0Config()
-  }
-})
+  var STATUS_OPTIONS = [
+    "", "✅", "ANTECIPAÇÃO", "EM EXPEDIÇÃO", "A CAMINHO XPT", "A CAMINHO NEX",
+    "RISCO NOSHOW", "NO SHOW", "SEM RISCO NOSHOW", "SUPRIU ROTA", "REOFERTA",
+    "DOBRA ALINHADA", "DRIVER A CAMINHO", "SEM ATIVIDADE", "OUTROS",
+    "ERRO OPERACIONAL", "NÃO INICIADO"
+  ];
 
-// ── Data anterior (placas do dia anterior) ────────────────────────
-$("btnDate0Toggle").addEventListener("click", () => {
-  date0Active = !date0Active
-  $("btnDate0Toggle").classList.toggle("on", date0Active)
-  $("date0Group").style.display = date0Active ? "flex" : "none"
-  if (date0Active) {
-    // Define data0 como o dia anterior à data principal
-    const d = new Date(selectedDate + "T12:00:00")
-    d.setDate(d.getDate() - 1)
-    $("datePicker0").value = d.toISOString().substring(0,10)
-    selectedDate0 = $("datePicker0").value
-    openAnt0Modal()
-  } else {
-    selectedDate0 = ""
-    ant0Sel.clear()
-    applyFilter()
-    saveDate0Config()
-  }
-})
+  var STATUS_TONE = {
+    "✅": "good", "SUPRIU ROTA": "good", "SEM RISCO NOSHOW": "good",
+    "EM EXPEDIÇÃO": "info", "A CAMINHO XPT": "info", "A CAMINHO NEX": "info",
+    "DRIVER A CAMINHO": "info", "ANTECIPAÇÃO": "info", "DOBRA ALINHADA": "info",
+    "REOFERTA": "warn", "RISCO NOSHOW": "warn", "SEM ATIVIDADE": "warn",
+    "NO SHOW": "critical", "ERRO OPERACIONAL": "critical",
+    "OUTROS": "muted", "NÃO INICIADO": "muted", "": "muted"
+  };
 
-$("datePicker0").addEventListener("change", () => {
-  selectedDate0 = $("datePicker0").value
-  ant0Sel.clear()
-  openAnt0Modal()
-})
+  // Mesmas cores usadas no chip do select fechado (s-good/s-info/...),
+  // aplicadas também em cada <option> pra colorir a lista suspensa.
+  var TONE_COLORS = {
+    good: { fg: "var(--good)", bg: "var(--good-soft)" },
+    info: { fg: "var(--info)", bg: "var(--info-soft)" },
+    warn: { fg: "var(--warn)", bg: "var(--warn-soft)" },
+    critical: { fg: "var(--critical)", bg: "var(--critical-soft)" },
+    muted: { fg: "var(--muted-chip)", bg: "var(--muted-chip-soft)" }
+  };
 
-$("btnAnt0Edit").addEventListener("click", () => openAnt0Modal())
-
-// ── Modal placas dia anterior ─────────────────────────────────────
-function openAnt0Modal() {
-  if (!selectedDate0) return
-  const candidates = []
-  for (const src of allRows) {
-    const placa   = v(src,"Veículo de carga 1")||v(src,"Veículo de carga 2")
-    const destino = v(src,"Destino").toUpperCase()
-    const eta     = normalizeDate(v(src,"Destino ETA")).substring(0,10)
-    const motor   = v(src,"Motorista").toUpperCase()
-    const id      = v(src,"Route ID")
-    if (destino !== "SPA1" && destino !== "SPA2") continue
-    if (motor.includes("RODOPENHA")) continue
-    if (!placa||placa.toLowerCase().includes("sem placa")) continue
-    if (eta !== selectedDate0) continue
-    candidates.push({ id, placa, motor })
-  }
-
-  $("ant0DateLabel").textContent = selectedDate0
-  const wrap = $("ant0ListWrap")
-  wrap.innerHTML = candidates.length
-    ? candidates.map(c => `
-      <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;
-        border-radius:8px;background:var(--bg3);cursor:pointer;font-family:'Barlow',sans-serif;">
-        <input type="checkbox" data-id="${c.id}" ${ant0Sel.has(c.id)?"checked":""}
-          style="width:15px;height:15px;accent-color:#b45220;cursor:pointer;">
-        <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;
-          color:var(--text);letter-spacing:.3px;">${c.placa}</span>
-        <span style="font-size:10px;color:var(--text2);font-weight:600;">${c.motor}</span>
-      </label>`).join("")
-    : `<div style="padding:16px;text-align:center;color:var(--text3);font-size:13px;">
-        Nenhuma placa encontrada para ${selectedDate0}.</div>`
-
-  $("modalAnt0").style.display = "flex"
-}
-
-$("btnAnt0Cancel").addEventListener("click", () => {
-  $("modalAnt0").style.display = "none"
-  if (ant0Sel.size === 0) {
-    date0Active = false
-    $("btnDate0Toggle").classList.remove("on")
-    $("date0Group").style.display = "none"
-  }
-})
-
-$("btnAnt0SelectAll").addEventListener("click", () => {
-  $("ant0ListWrap").querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = true)
-})
-$("btnAnt0ClearAll").addEventListener("click", () => {
-  $("ant0ListWrap").querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = false)
-})
-
-$("btnAnt0Confirm").addEventListener("click", async () => {
-  ant0Sel.clear()
-  $("ant0ListWrap").querySelectorAll("input[type=checkbox]:checked").forEach(cb => {
-    ant0Sel.add(cb.dataset.id)
-  })
-  $("modalAnt0").style.display = "none"
-  applyFilter()
-  saveDate0Config()
-})
-
-async function saveDate0Config() {
-  try {
-    await rtdbPatch("lh_config", {
-      date0_active: date0Active,
-      date0_value:  selectedDate0,
-      ant0_sel:     [...ant0Sel],
-      updated_at:   new Date().toISOString()
-    })
-  } catch(e) { console.warn("Config save date0:", e) }
-}
-
-async function loadDate0Config() {
-  try {
-    const cfg = await rtdbGet("lh_config")
-    if (cfg && cfg.date0_active) {
-      date0Active   = true
-      selectedDate0 = cfg.date0_value || ""
-      ant0Sel       = new Set(cfg.ant0_sel || [])
-      $("btnDate0Toggle").classList.add("on")
-      $("date0Group").style.display = "flex"
-      if (selectedDate0) $("datePicker0").value = selectedDate0
+  function seedData() {
+    var rows = [];
+    var id = 1;
+    function add(grupo, origem, backlog, spa1, spa2, expedidas) {
+      rows.push({ id: id++, grupo: grupo, origem: origem, backlog: backlog, spa1: spa1, spa2: spa2, expedidas: expedidas, impactoDit: 0, status: "", obs: "" });
     }
-  } catch(e) { console.warn("Config load date0:", e) }
-}
-
-// ── Segunda data (antecipadas) ────────────────────────────────────
-$("btnDate2Toggle").addEventListener("click", () => {
-  date2Active = !date2Active
-  $("btnDate2Toggle").classList.toggle("on", date2Active)
-  $("date2Group").style.display = date2Active ? "flex" : "none"
-  if (date2Active) {
-    // Sempre define a data2 como o dia seguinte à data principal
-    const d = new Date(selectedDate + "T12:00:00")
-    d.setDate(d.getDate() + 1)
-    $("datePicker2").value = d.toISOString().substring(0,10)
-    selectedDate2 = $("datePicker2").value
-    openAntModal()
-  } else {
-    selectedDate2 = ""
-    antecipSel.clear()
-    applyFilter()
-    saveDate2Config()
-  }
-})
-
-$("datePicker2").addEventListener("change", () => {
-  selectedDate2 = $("datePicker2").value
-  antecipSel.clear()
-  openAntModal()
-})
-
-$("btnAntEdit").addEventListener("click", () => openAntModal())
-
-// ── Modal antecipadas ─────────────────────────────────────────────
-function openAntModal() {
-  if (!selectedDate2) return
-  // Coleta placas disponíveis na data2 do CSV
-  const candidates = []
-  for (const src of allRows) {
-    const placa   = v(src,"Veículo de carga 1")||v(src,"Veículo de carga 2")
-    const destino = v(src,"Destino").toUpperCase()
-    const eta     = normalizeDate(v(src,"Destino ETA")).substring(0,10)
-    const motor   = v(src,"Motorista").toUpperCase()
-    const id      = v(src,"Route ID")
-    if (destino !== "SPA1" && destino !== "SPA2") continue
-    if (motor.includes("RODOPENHA")) continue
-    if (!placa||placa.toLowerCase().includes("sem placa")) continue
-    if (eta !== selectedDate2) continue
-    candidates.push({ id, placa, motor })
+    add("XPT","EPA1",0,66,0,50); add("XPT","EPA2",0,0,26,19); add("XPT","EPA3",0,0,59,38);
+    add("XPT","EPA4",0,0,68,53); add("XPT","EPA5",5,0,34,37); add("XPT","EPA6",0,0,26,20);
+    add("XPT","EPA7",0,0,47,23); add("XPT","EPA8",0,0,28,17); add("XPT","EPA9",0,25,0,16);
+    add("XPT","ETO4",0,0,67,46);
+    add("SVC","JL Castro",0,14,0,12); add("SVC","RodaCoop",0,33,0,30); add("SVC","COOPMETRO",0,19,0,17);
+    add("SVC","PANTERA LOG TRAN",0,19,0,13); add("SVC","50 Mais",0,22,0,13); add("SVC","BRJTransportes",0,37,0,36);
+    add("SVC","Kangu Logistics",0,30,0,32); add("SVC","WLS CARGO",0,15,0,16); add("SVC","Envios Extra",0,33,0,6);
+    add("NEX","BRNPA26",0,57,0,42); add("NEX","BRNPA75",0,37,0,23); add("NEX","BRNPA193",0,47,0,46);
+    add("NEX","BRNPA736",0,5,0,3); add("NEX","BRNPA11444",0,0,0,0); add("NEX","BRNPA11440",0,4,0,4);
+    add("NEX","BRNPA769",0,13,0,11); add("NEX","BRNPA527",0,0,0,0); add("NEX","BRNPA240",0,0,0,0);
+    add("NEX","BRNPA535",0,15,0,17); add("NEX","BRNPA11416",0,13,0,11); add("NEX","BRNPA11420",0,7,0,6);
+    add("NEX","BRNPA11425",0,14,0,14); add("NEX","BRNPA11441",0,2,0,2); add("NEX","BRNPA11458",0,2,0,1);
+    add("NEX","BRNPA11447",0,2,0,2); add("NEX","BRNPA71",0,5,0,3); add("NEX","BRNPA11454",0,0,0,0);
+    add("NEX","BRNPA11448",1,3,0,3); add("NEX","BRNPA11457",1,6,0,4);
+    add("DC","BRDPA11404",0,1,0,1); add("DC","BRDPA11445",0,1,0,1); add("DC","BRDPA11446",0,1,0,1);
+    add("DC","BRDPA11447",0,0,0,0); add("DC","BRDPA11448",0,1,0,2); add("DC","BRDPA11449",2,1,0,1);
+    add("DC","BRDPA193",0,1,0,1); add("DC","BRDPA26",0,1,0,1); add("DC","BRDPA11459",0,1,0,1);
+    add("DC","BRDPA11452",0,1,0,1); add("DC","BRDPA527",0,0,0,0); add("DC","BRDPA71",0,0,0,0);
+    return rows;
   }
 
-  $("ant2DateLabel").textContent = selectedDate2
-  const wrap = $("antListWrap")
-  wrap.innerHTML = candidates.length
-    ? candidates.map(c => `
-      <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;
-        border-radius:8px;background:var(--bg3);cursor:pointer;font-family:'Barlow',sans-serif;">
-        <input type="checkbox" data-id="${c.id}" ${antecipSel.has(c.id)?"checked":""}
-          style="width:15px;height:15px;accent-color:#7c3aed;cursor:pointer;">
-        <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;
-          color:var(--text);letter-spacing:.3px;">${c.placa}</span>
-        <span style="font-size:10px;color:var(--text2);font-weight:600;">${c.motor}</span>
-      </label>`).join("")
-    : `<div style="padding:16px;text-align:center;color:var(--text3);font-size:13px;">
-        Nenhuma placa encontrada para ${selectedDate2}.</div>`
+  var state = {
+    rows: [],
+    filterGroup: "TODOS",
+    search: "",
+    hideZeroPending: false,
+    nextId: 1,
+    sortField: null,
+    sortDir: 1
+  };
 
-  $("modalAntecipad").style.display = "flex"
-}
+  var SORT_VALUE_GETTERS = {
+    // Ordena primeiro por grupo (XPT/SVC/NEX/DC) e só depois por nome — assim
+    // origens do mesmo grupo continuam juntas ao ordenar por essa coluna, em
+    // vez de se espalharem numa ordem puramente alfabética pelo nome.
+    origem: function (r) { return (r.grupo + "||" + r.origem).toLowerCase(); },
+    backlog: function (r) { return Number(r.backlog) || 0; },
+    spa1: function (r) { return Number(r.spa1) || 0; },
+    spa2: function (r) { return Number(r.spa2) || 0; },
+    total: function (r) { return total(r); },
+    expedidas: function (r) { return Number(r.expedidas) || 0; },
+    pending: function (r) { return pending(r); },
+    impactoDit: function (r) { return Number(r.impactoDit) || 0; },
+    status: function (r) { return r.status.toLowerCase(); },
+    obs: function (r) { return r.obs.toLowerCase(); }
+  };
 
-$("btnAntCancel").addEventListener("click", () => {
-  $("modalAntecipad").style.display = "none"
-  if (antecipSel.size === 0) {
-    date2Active = false
-    $("btnDate2Toggle").classList.remove("on")
-    $("date2Group").style.display = "none"
-  }
-})
-
-$("btnAntSelectAll").addEventListener("click", () => {
-  $("antListWrap").querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = true)
-})
-$("btnAntClearAll").addEventListener("click", () => {
-  $("antListWrap").querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = false)
-})
-
-$("btnAntConfirm").addEventListener("click", async () => {
-  antecipSel.clear()
-  $("antListWrap").querySelectorAll("input[type=checkbox]:checked").forEach(cb => {
-    antecipSel.add(cb.dataset.id)
-  })
-  $("modalAntecipad").style.display = "none"
-  applyFilter()
-  saveDate2Config()
-})
-
-async function saveDate2Config() {
-  try {
-    await rtdbPatch("lh_config", {
-      date2_active: date2Active,
-      date2_value:  selectedDate2,
-      antecip_sel:  [...antecipSel],
-      updated_at:   new Date().toISOString()
-    })
-  } catch(e) { console.warn("Config save:", e) }
-}
-
-async function loadDate2Config() {
-  try {
-    const cfg = await rtdbGet("lh_config")
-    if (cfg && cfg.date2_active) {
-      date2Active   = true
-      selectedDate2 = cfg.date2_value || ""
-      antecipSel    = new Set(cfg.antecip_sel || [])
-      $("btnDate2Toggle").classList.add("on")
-      $("date2Group").style.display = "flex"
-      if (selectedDate2) $("datePicker2").value = selectedDate2
-    }
-  } catch(e) { console.warn("Config load:", e) }
-}
-
-// ── Placa manual ──────────────────────────────────────────────────────
-const modal = $("modalPlaca")
-$("btnAddPlaca").addEventListener("click", () => {
-  $("inputPlaca").value = ""
-  $("inputTransp").value = ""
-  modal.style.display = "flex"
-  setTimeout(() => $("inputPlaca").focus(), 50)
-})
-$("btnModalCancel").addEventListener("click", () => { modal.style.display = "none" })
-modal.addEventListener("click", e => { if (e.target === modal) modal.style.display = "none" })
-
-$("btnModalAdd").addEventListener("click", async () => {
-  const placa = $("inputPlaca").value.trim().toUpperCase()
-  if (!placa) { $("inputPlaca").focus(); return }
-  const transp = $("inputTransp").value.trim().toUpperCase()
-
-  // ID sintético para placas manuais: "MANUAL_<placa>_<data>"
-  const id = "MANUAL_" + placa + "_" + selectedDate.replace(/-/g,"")
-
-  // Adiciona em filtered e manualMap localmente
-  if (!filtered.find(r => r.id === id)) {
-    filtered.push({ id, placa, ymsIn:"", ymsOut:"", pacotes:"", motorista:transp, _manual:true })
-  }
-  if (!manualMap[id]) {
-    manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—", route_id:id }
-  }
-  render()
-  modal.style.display = "none"
-  showToast(`✅ Placa ${placa} adicionada`, "ok")
-
-  // Salva no Firebase
-  setSyncStatus("loading","Salvando…")
-  try {
-    await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, {
-      route_id: id, placa_manual: placa, motorista_manual: transp,
-      data_ref: selectedDate, updated_at: new Date().toISOString()
-    })
-    setSyncStatus("ok","Online")
-  } catch(e) { setSyncStatus("err","Erro"); console.error(e) }
-})
-
-// Enter no input confirma
-$("inputPlaca").addEventListener("keydown", e => { if (e.key==="Enter") $("btnModalAdd").click() })
-$("inputTransp").addEventListener("keydown", e => { if (e.key==="Enter") $("btnModalAdd").click() })
-
-// File chosen → show table IMMEDIATELY, then optionally cloud upload
-$("fileInput").addEventListener("change", e => {
-  const f = e.target.files[0]
-  if (!f) return
-  $("fileName").textContent = f.name
-  const name = f.name.toLowerCase()
-  if (name.endsWith(".xlsx") || name.endsWith(".xls")) readXLSX(f, false)
-  else readCSV(f, false)
-})
-
-// Table select changes → save to cloud instantly
-$("tbody").addEventListener("change", async e => {
-  const { id, field } = e.target.dataset
-  if (!id || !field) return
-  const val = e.target.value
-
-  if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
-  manualMap[id][field] = val
-
-  // Auto HR INICIO: ao marcar "Descarga iniciada", registra horário se ainda não preenchido
-  let autoHora = null
-  if (field === "status_patio" && val === "Descarga iniciada" && !manualMap[id].reversa_hora) {
-    autoHora = new Date().toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})
-    manualMap[id].reversa_hora = autoHora
-  }
-
-  render()
-
-  // Flash green on row
-  const row = e.target.closest("tr")
-  if (row) { row.classList.remove("saved"); void row.offsetWidth; row.classList.add("saved") }
-
-  setSyncStatus("loading", "Salvando…")
-  try {
-    const patch = { route_id: id, [field]: val, updated_at: new Date().toISOString() }
-    if (autoHora) patch.reversa_hora = autoHora
-    await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, patch)
-    setSyncStatus("ok", "Online")
-    showToast("✅ Salvo na nuvem", "ok")
-  } catch(err) {
-    setSyncStatus("err", "Erro")
-    showToast("❌ Erro ao salvar", "err")
-    console.error(err)
-  }
-})
-
-// Tooltip da transportadora: toque no celular abre/fecha
-$("tbody").addEventListener("click", async e => {
-  // ── Ocultar / mostrar placa ──────────────────────────────────────
-  const ocBtn = e.target.closest(".btn-ocultar")
-  if (ocBtn) {
-    const id = ocBtn.dataset.id
-    if (!id) return
-    if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
-    const novoOculto = !manualMap[id].oculto
-    manualMap[id].oculto = novoOculto
-    render()
-    setSyncStatus("loading","Salvando…")
+  function readLiveData() {
     try {
-      await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, { route_id:id, oculto:novoOculto, updated_at:new Date().toISOString() })
-      setSyncStatus("ok","Online")
-      showToast(novoOculto ? "👁 Placa oculta" : "👁 Placa visível", "ok")
-    } catch(err){ setSyncStatus("err","Erro"); showToast("❌ Erro ao salvar","err"); console.error(err) }
-    return
+      var el = document.getElementById("live-data");
+      if (!el) return null;
+      var parsed = JSON.parse(el.textContent || el.innerText || "{}");
+      if (parsed && Array.isArray(parsed.rows) && parsed.rows.length) return parsed;
+    } catch (e) {}
+    return null;
   }
 
-  // ── Excluir placa manual ─────────────────────────────────────────
-  const delBtn = e.target.closest(".del-manual")
-  if (delBtn) {
-    const id = delBtn.dataset.id
-    if (!confirm(`Excluir placa manual ${id.split("_")[1]}?`)) return
-    filtered = filtered.filter(r => r.id !== id)
-    delete manualMap[id]
-    render()
-    setSyncStatus("loading","Salvando…")
+  var firebaseSyncInFlight = false;
+
+  // Chave segura pro Firebase (não aceita . # $ [ ] / em nomes de nó).
+  function firebaseSafeKey(s) {
+    return encodeURIComponent(String(s)).replace(/\./g, "%2E");
+  }
+
+  // Busca o snapshot mais recente gravado pelo Atualizador (spa1/spa2/expedidas,
+  // em /latest.json — o executável NUNCA grava em /manual, só o painel escreve
+  // ali) e também os campos manuais (Backlog/Status/Observação/Impacto DIT)
+  // gravados por qualquer pessoa que tenha editado a tabela, em /manual.json.
+  // Roda em segundo plano em qualquer aba aberta, sem precisar reabrir o painel.
+  async function syncFromFirebase(manual) {
+    if (firebaseSyncInFlight) return;
+    firebaseSyncInFlight = true;
+    if (manual) showToast("Sincronizando com o Firebase...");
     try {
-      await rtdbDelete(`lh_monitoramento/${encodeKey(id)}`)
-      setSyncStatus("ok","Online")
-      showToast("🗑 Placa excluída","err")
-    } catch(err){ setSyncStatus("err","Erro"); showToast("❌ Erro ao excluir","err"); console.error(err) }
-    return
-  }
+      var res = await fetch(FIREBASE_URL + "/latest.json", { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      var data = await res.json();
 
-  // ── YMS IN / OUT manual ───────────────────────────────────────────
-  const ymsSpan = e.target.closest(".yms-edit, .yms-val")
-  if (ymsSpan) {
-    // Fecha qualquer popup aberto
-    document.querySelectorAll(".yms-popup").forEach(p => p.remove())
-
-    const id    = ymsSpan.dataset.id
-    const field = ymsSpan.dataset.field
-    const cur   = (manualMap[id]?.[field] || "").replace(/[^0-9:]/g,"")
-
-    const popup = document.createElement("div")
-    popup.className = "yms-popup"
-    popup.innerHTML = `<input type="time" value="${cur}" class="yms-time-input">
-      <button class="yms-ok">✔</button>
-      <button class="yms-cl">✕</button>`
-    ymsSpan.closest("td").appendChild(popup)
-    popup.querySelector(".yms-time-input").focus()
-
-    const close = () => popup.remove()
-    popup.querySelector(".yms-cl").onclick = close
-
-    const save = async () => {
-      const val = popup.querySelector(".yms-time-input").value  // "HH:MM"
-      close()
-      if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
-      manualMap[id][field] = val
-      render()
-      setSyncStatus("loading","Salvando…")
+      var manualByKey = {};
       try {
-        await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, { route_id:id, [field]:val, updated_at:new Date().toISOString() })
-        setSyncStatus("ok","Online")
-        showToast(`✅ Horário salvo: ${val}`,"ok")
-      } catch(err){ setSyncStatus("err","Erro"); showToast("❌ Erro ao salvar","err"); console.error(err) }
-    }
-    popup.querySelector(".yms-ok").onclick = save
-    popup.querySelector(".yms-time-input").addEventListener("keydown", ev => {
-      if (ev.key==="Enter") save()
-      if (ev.key==="Escape") close()
-    })
-    // Click fora fecha
-    setTimeout(() => document.addEventListener("click", function handler(ev){
-      if (!popup.contains(ev.target) && ev.target !== ymsSpan){
-        close(); document.removeEventListener("click", handler)
+        var resManual = await fetch(FIREBASE_URL + "/manual.json", { cache: "no-store" });
+        if (resManual.ok) {
+          var manualData = await resManual.json();
+          if (manualData) {
+            Object.keys(manualData).forEach(function (k) {
+              var m = manualData[k];
+              if (m && m.grupo && m.origem) manualByKey[m.grupo + "||" + m.origem] = m;
+            });
+          }
+        }
+      } catch (eManual) { /* segue sem dados manuais remotos se falhar */ }
+
+      var houveDadosAutomaticos = data && Array.isArray(data.rows) && data.rows.length;
+      var mudouAutomatico = houveDadosAutomaticos && data.generatedAt !== state.liveGeneratedAt;
+      var houveDadosManuais = Object.keys(manualByKey).length > 0;
+
+      if (!mudouAutomatico && !houveDadosManuais) {
+        if (manual) showToast(houveDadosAutomaticos ? "Já está atualizado (última sincronização: " + new Date(data.generatedAt).toLocaleString("pt-BR") + ")." : "Nenhum dado disponível no Firebase ainda.");
+        return;
       }
-    }), 100)
-    return
+
+      var liveRows = houveDadosAutomaticos ? data.rows : state.rows.map(function (r) {
+        return { grupo: r.grupo, origem: r.origem, spa1: r.spa1, spa2: r.spa2, expedidas: r.expedidas };
+      });
+      var merged = mergeLiveIntoRows(state.rows, liveRows, manualByKey);
+      state.rows = merged.rows;
+      state.nextId = merged.nextId;
+      if (mudouAutomatico) state.liveGeneratedAt = data.generatedAt;
+      persist();
+      renderAll();
+      updateAutoSyncInfo();
+      if (manual) showToast("Painel atualizado com os dados mais recentes.");
+    } catch (e) {
+      if (manual) showToast("Não foi possível sincronizar com o Firebase agora.");
+    } finally {
+      firebaseSyncInFlight = false;
+    }
   }
 
-  const wrap = e.target.closest(".placa-wrap")
-  if (wrap && !e.target.closest(".rtgl")) {
-    // Fecha outros abertos
-    document.querySelectorAll(".placa-wrap.tip-open").forEach(el => {
-      if (el !== wrap) el.classList.remove("tip-open")
-    })
-    wrap.classList.toggle("tip-open")
+  var manualPushTimers = {};
+
+  function buildManualPayload(row) {
+    return {
+      grupo: row.grupo, origem: row.origem,
+      backlog: row.backlog, status: row.status, obs: row.obs, impactoDit: row.impactoDit,
+      spa1: row.spa1, spa1Manual: !!row.spa1Manual,
+      spa2: row.spa2, spa2Manual: !!row.spa2Manual,
+      expedidas: row.expedidas, expedidasManual: !!row.expedidasManual,
+      updatedAt: new Date().toISOString()
+    };
   }
 
-  // ── HR INICIO button (inativo → registra hora + auto-status) ────────
-  const btn = e.target.closest(".btn-reversa:not(.active)")
-  if (btn) {
-    const id = btn.dataset.id
-    if (!id) return
-    if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
-    const newTime = new Date().toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})
-    manualMap[id].reversa_hora = newTime
+  // Grava os campos manuais de UMA origem no Firebase (debounced — espera a
+  // pessoa parar de digitar), pra quem mais estiver com o painel aberto
+  // receber essa edição no próximo ciclo de sincronização (a cada 60s, ou
+  // na hora se a pessoa clicar em "Sincronizar").
+  function pushManualField(row) {
+    var key = row.grupo + "||" + row.origem;
+    clearTimeout(manualPushTimers[key]);
+    manualPushTimers[key] = setTimeout(function () {
+      fetch(FIREBASE_URL + "/manual/" + firebaseSafeKey(key) + ".json", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(buildManualPayload(row))
+      }).catch(function () { /* falha silenciosa: edição já está salva localmente */ });
+    }, 700);
+  }
 
-    let autoStatus = null
-    const curStatus = manualMap[id].status_patio || "Não Chegou"
-    if (curStatus === "Não Chegou") {
-      autoStatus = "Descarga iniciada"
-      manualMap[id].status_patio = autoStatus
+  // Destrava um campo travado manualmente (expedidas ou spa2): volta a
+  // seguir o valor automático da API. Grava a mudança no Firebase de forma
+  // síncrona (sem debounce, senão o próximo sync corre risco de ler o flag
+  // antigo ainda "true") e, assim que confirma, força um sync imediato pra
+  // já trazer o valor atual em vez de esperar até 60s.
+  function unlockField(rowId, field) {
+    var row = state.rows.find(function (r) { return r.id === rowId; });
+    if (!row) return;
+    row[field + "Manual"] = false;
+    persist();
+    renderAll();
+    var key = row.grupo + "||" + row.origem;
+    clearTimeout(manualPushTimers[key]);
+    showToast("Campo destravado — buscando valor automático...");
+    fetch(FIREBASE_URL + "/manual/" + firebaseSafeKey(key) + ".json", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(buildManualPayload(row))
+    }).catch(function () {}).finally(function () {
+      syncFromFirebase(false);
+    });
+  }
+
+  // Zera Status e Observação de TODAS as origens de uma vez (ex: início de
+  // turno) — grava cada linha no Firebase igual a uma edição manual normal,
+  // pra quem mais estiver com o painel aberto também ver a limpeza.
+  function limparStatusObs() {
+    if (!state.rows.length) return;
+    if (!confirm("Limpar o Status, a Observação e o Backlog de todas as origens?")) return;
+    state.rows.forEach(function (row) {
+      row.status = "";
+      row.obs = "";
+      row.backlog = 0;
+      pushManualField(row);
+    });
+    persist();
+    renderAll();
+    showToast("Status, Observação e Backlog limpos em todas as origens.");
+  }
+
+  // Destrava de uma vez todos os campos travados manualmente (spa1/spa2/
+  // expedidas com o cadeado 🔒) em todas as origens, igual a clicar em cada
+  // cadeado individualmente — grava cada linha alterada no Firebase e força
+  // um sync imediato pra já trazer os valores automáticos.
+  function removerTravasManuais() {
+    var travados = state.rows.filter(function (r) {
+      return r.spa1Manual || r.spa2Manual || r.expedidasManual;
+    });
+    if (!travados.length) {
+      showToast("Nenhum campo travado manualmente.");
+      return;
+    }
+    if (!confirm("Destravar " + travados.length + " origem(ns) com campos travados manualmente e voltar ao valor automático?")) return;
+    travados.forEach(function (row) {
+      row.spa1Manual = false;
+      row.spa2Manual = false;
+      row.expedidasManual = false;
+      var key = row.grupo + "||" + row.origem;
+      clearTimeout(manualPushTimers[key]);
+      fetch(FIREBASE_URL + "/manual/" + firebaseSafeKey(key) + ".json", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(buildManualPayload(row))
+      }).catch(function () {});
+    });
+    persist();
+    renderAll();
+    showToast("Travas removidas — buscando valores automáticos...");
+    syncFromFirebase(false);
+  }
+
+  // Combina as origens extraídas automaticamente (spa1/spa2/expedidas) com os
+  // campos preenchidos manualmente na operação (backlog/status/observação/
+  // impacto DIT). Se vier um valor manual remoto (manualByKey, gravado por
+  // outra pessoa no Firebase) ele tem prioridade sobre o que já está salvo só
+  // neste navegador — assim as edições manuais também ficam compartilhadas.
+  function mergeLiveIntoRows(existingRows, liveRows, manualByKey) {
+    manualByKey = manualByKey || {};
+    var liveByKey = {};
+    liveRows.forEach(function (lr) { liveByKey[lr.grupo + "||" + lr.origem] = lr; });
+    var seen = {};
+    var nextId = existingRows.reduce(function (m, r) { return Math.max(m, r.id || 0); }, 0) + 1;
+
+    // Planejadas SPA1, SPA2 e Expedidas normalmente vêm da coleta automática, mas se
+    // alguém já editou um desses campos na mão (fooManual: true — localmente ou
+    // gravado por outra pessoa em /manual no Firebase), o valor manual prevalece
+    // e para de ser sobrescrito pela sincronização automática.
+    // Sem override manual, o campo segue 100% a coleta ao vivo: se a origem
+    // não aparece mais em liveRows (nenhuma rota dela na API agora), o valor
+    // zera — igual ao spa1/spa2 já fazem. Antes caía pro valor salvo local
+    // (prev[campo]), então uma origem sem rotas nenhuma hoje ficava com
+    // "Expedidas" grudado no número de um dia anterior pra sempre (Total
+    // zerava mas Expedidas não, gerando Pendentes negativo).
+    function campoComOverrideManual(campo, lr, man, prev) {
+      var manualFlagKey = campo + "Manual";
+      var manual = man ? !!man[manualFlagKey] : !!(prev && prev[manualFlagKey]);
+      var valor = manual
+        ? Number(man ? man[campo] : prev[campo]) || 0
+        : (lr ? (lr[campo] || 0) : 0);
+      return { manual: manual, valor: valor };
     }
 
-    render()
-    const row = btn.closest("tr")
-    if (row) { row.classList.remove("saved"); void row.offsetWidth; row.classList.add("saved") }
-    setSyncStatus("loading", "Salvando…")
-    try {
-      const patch = { route_id:id, reversa_hora:newTime, updated_at:new Date().toISOString() }
-      if (autoStatus) patch.status_patio = autoStatus
-      await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, patch)
-      setSyncStatus("ok", "Online")
-      showToast(`⏱ Início: ${newTime}`, "ok")
-    } catch(err) { setSyncStatus("err","Erro"); showToast("❌ Erro ao salvar","err"); console.error(err) }
-    return
+    function buildRow(id, grupo, origem, lr, man, prev) {
+      var spa1 = campoComOverrideManual("spa1", lr, man, prev);
+      var spa2 = campoComOverrideManual("spa2", lr, man, prev);
+      var expedidas = campoComOverrideManual("expedidas", lr, man, prev);
+      return {
+        id: id,
+        grupo: grupo,
+        origem: origem,
+        backlog: man ? man.backlog : (prev ? prev.backlog : 0),
+        spa1: spa1.valor,
+        spa1Manual: spa1.manual,
+        spa2: spa2.valor,
+        spa2Manual: spa2.manual,
+        expedidas: expedidas.valor,
+        expedidasManual: expedidas.manual,
+        impactoDit: man ? man.impactoDit : (prev ? prev.impactoDit : 0),
+        status: man ? man.status : (prev ? prev.status : ""),
+        obs: man ? man.obs : (prev ? prev.obs : "")
+      };
+    }
+
+    // Preserva a ordem local (inclusive reordenação manual arrastando linhas):
+    // toda origem que já existia neste navegador continua na mesma posição,
+    // só troca os valores automáticos (spa1/spa2/expedidas) e os manuais mais
+    // recentes. Sem isso, o sync automático (a cada FIREBASE_SYNC_INTERVAL_MS)
+    // devolvia sempre a ordem alfabética que o Atualizador gera, desfazendo
+    // qualquer arrasto.
+    var merged = existingRows.map(function (r) {
+      var key = r.grupo + "||" + r.origem;
+      seen[key] = true;
+      return buildRow(r.id, r.grupo, r.origem, liveByKey[key], manualByKey[key], r);
+    });
+
+    // Origens novas na coleta automática (nunca vistas neste navegador antes):
+    // entram no final, na ordem em que a API retornou.
+    liveRows.forEach(function (lr) {
+      var key = lr.grupo + "||" + lr.origem;
+      if (seen[key]) return;
+      seen[key] = true;
+      merged.push(buildRow(nextId++, lr.grupo, lr.origem, lr, manualByKey[key], null));
+    });
+
+    // Origem criada manualmente por outra pessoa (ex.: botão "+ Adicionar
+    // origem") que ainda não existe neste navegador nem na coleta automática:
+    // cria a linha aqui também, pra ficar igual pra todo mundo.
+    Object.keys(manualByKey).forEach(function (key) {
+      if (seen[key]) return;
+      seen[key] = true;
+      var man = manualByKey[key];
+      merged.push(buildRow(nextId++, man.grupo, man.origem, null, man, null));
+    });
+
+    return { rows: merged, nextId: nextId };
   }
 
-  // ── HR INICIO editar horário manualmente ─────────────────────────
-  const editSpan = e.target.closest(".rev-time-edit")
-  if (editSpan) {
-    document.querySelectorAll(".yms-popup").forEach(p => p.remove())
-    const id  = editSpan.dataset.id
-    const cur = (manualMap[id]?.reversa_hora || "").replace(/[^0-9:]/g,"")
-    const popup = document.createElement("div")
-    popup.className = "yms-popup"
-    popup.innerHTML = `<input type="time" value="${cur}" class="yms-time-input">
-      <button class="yms-ok">✔</button>
-      <button class="yms-cl">✕</button>`
-    editSpan.closest("td").appendChild(popup)
-    popup.querySelector(".yms-time-input").focus()
-    const close = () => popup.remove()
-    popup.querySelector(".yms-cl").onclick = close
-    const save = async () => {
-      const val = popup.querySelector(".yms-time-input").value
-      close()
-      if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
-      manualMap[id].reversa_hora = val
-      render()
-      setSyncStatus("loading","Salvando…")
+  function load() {
+    var stored = null;
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) stored = JSON.parse(raw);
+    } catch (e) {}
+    var baseRows = (stored && Array.isArray(stored.rows) && stored.rows.length) ? stored.rows : null;
+
+    var live = readLiveData();
+    if (live) {
+      var merged = mergeLiveIntoRows(baseRows || seedData(), live.rows);
+      state.rows = merged.rows;
+      state.nextId = merged.nextId;
+      state.liveGeneratedAt = live.generatedAt;
+      return true;
+    }
+
+    if (baseRows) {
+      state.rows = baseRows;
+      state.nextId = stored.nextId || (Math.max.apply(null, baseRows.map(function (r) { return r.id; })) + 1);
+      state.liveGeneratedAt = stored.liveGeneratedAt || null;
+      return false;
+    }
+
+    state.rows = seedData();
+    state.nextId = state.rows.length + 1;
+    return false;
+  }
+
+  function persist() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ rows: state.rows, nextId: state.nextId, liveGeneratedAt: state.liveGeneratedAt || null }));
+    } catch (e) {}
+    var lbl = document.getElementById("last-edit");
+    if (lbl) lbl.textContent = new Date().toLocaleTimeString("pt-BR");
+  }
+
+  function total(r) { return (Number(r.backlog) || 0) + (Number(r.spa1) || 0) + (Number(r.spa2) || 0); }
+  function pending(r) { return total(r) - (Number(r.expedidas) || 0); }
+
+  function pendingTone(p) {
+    if (p <= 0) return "good";
+    if (p <= 15) return "warn";
+    return "critical";
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
+    });
+  }
+
+  function searchMatches(r) {
+    var q = state.search.trim().toLowerCase();
+    if (!q) return true;
+    return r.origem.toLowerCase().indexOf(q) !== -1 || r.grupo.toLowerCase().indexOf(q) !== -1;
+  }
+
+  // Linhas do grupo/busca atualmente selecionados, SEM aplicar o toggle
+  // "ocultar pendentes zerados" — é a base usada pelos totais (cards, KPIs
+  // e rodapé da tabela), pra esse toggle só esconder linhas da tabela sem
+  // encolher os totais planejados/expedidos junto.
+  function baseFilteredRows() {
+    return state.rows.filter(function (r) {
+      if (state.filterGroup !== "TODOS" && r.grupo !== state.filterGroup) return false;
+      if (!searchMatches(r)) return false;
+      return true;
+    });
+  }
+
+  function filteredRows() {
+    var rows = baseFilteredRows().filter(function (r) {
+      if (state.hideZeroPending && pending(r) <= 0) return false;
+      return true;
+    });
+    if (state.sortField) {
+      var getValue = SORT_VALUE_GETTERS[state.sortField];
+      var dir = state.sortDir;
+      rows = rows.slice().sort(function (a, b) {
+        var va = getValue(a), vb = getValue(b);
+        if (va < vb) return -1 * dir;
+        if (va > vb) return 1 * dir;
+        return a.origem.localeCompare(b.origem);
+      });
+    }
+    return rows;
+  }
+
+  function summarize(rows) {
+    var sum = { backlog: 0, spa1: 0, spa2: 0, total: 0, exp: 0, pend: 0 };
+    rows.forEach(function (r) {
+      sum.backlog += Number(r.backlog) || 0;
+      sum.spa1 += Number(r.spa1) || 0;
+      sum.spa2 += Number(r.spa2) || 0;
+      sum.total += total(r);
+      sum.exp += Number(r.expedidas) || 0;
+      // Soma o pendente com sinal (negativo abate do total) — só o resultado
+      // final é travado em 0, não cada linha individualmente.
+      sum.pend += pending(r);
+    });
+    sum.pend = Math.max(0, sum.pend);
+    return sum;
+  }
+
+  function fmtMilhar(n) {
+    return Number(n || 0).toLocaleString("pt-BR");
+  }
+
+  function renderKpis() {
+    var rows = baseFilteredRows();
+    var sum = summarize(rows);
+    var pct = sum.total > 0 ? Math.round((sum.exp / sum.total) * 1000) / 10 : 0;
+    var pendTone = pendingTone(sum.pend);
+
+    var tiles = [
+      { label: "Rotas totais", value: fmtMilhar(sum.total), sub: rows.length + " origens" },
+      { label: "Planejadas SPA1", value: fmtMilhar(sum.spa1) },
+      { label: "Planejadas SPA2", value: fmtMilhar(sum.spa2) },
+      { label: "Backlog", value: fmtMilhar(sum.backlog), tone: sum.backlog > 0 ? "warn" : "" },
+      { label: "Rotas expedidas", value: fmtMilhar(sum.exp), tone: "good" },
+      { label: "Rotas pendentes", value: fmtMilhar(sum.pend), tone: pendTone },
+      { label: "% Expedição", value: pct + "%", bar: pct }
+    ];
+
+    var html = tiles.map(function (t) {
+      var bar = (typeof t.bar === "number")
+        ? '<div class="bar"><span style="width:' + Math.min(100, Math.max(0, t.bar)) + '%; background:' + (t.bar >= 80 ? "var(--good)" : t.bar >= 50 ? "var(--warn)" : "var(--critical)") + '"></span></div>'
+        : "";
+      return '<div class="kpi">' +
+        '<div class="label">' + escapeHtml(t.label) + '</div>' +
+        '<div class="value num' + (t.tone ? " " + t.tone : "") + '">' + t.value + '</div>' +
+        (t.sub ? '<div class="sub">' + escapeHtml(t.sub) + '</div>' : "") +
+        bar +
+        '</div>';
+    }).join("");
+    document.getElementById("kpi-row").innerHTML = html;
+  }
+
+  function renderGroups() {
+    var groups = ["XPT", "SVC", "NEX", "DC"];
+    var html = groups.map(function (g) {
+      var rows = state.rows.filter(function (r) { return r.grupo === g && searchMatches(r); });
+      var pend = Math.max(0, rows.reduce(function (a, r) { return a + pending(r); }, 0));
+      var tot = rows.reduce(function (a, r) { return a + total(r); }, 0);
+      var active = state.filterGroup === g;
+      return '<button class="group-card' + (active ? " active" : "") + '" data-group="' + g + '">' +
+        '<span class="swatch" style="background:' + CATEGORIES[g].color + '"></span>' +
+        '<span class="meta">' +
+          '<div class="name">' + g + '</div>' +
+          '<div class="count">' + rows.length + ' origens · ' + tot + ' rotas</div>' +
+        '</span>' +
+        '<span class="pending num ' + pendingTone(pend) + '" style="color:' + (pendingTone(pend) === "good" ? "var(--good)" : pendingTone(pend) === "warn" ? "var(--warn)" : "var(--critical)") + '">' + pend + '</span>' +
+      '</button>';
+    }).join("");
+    document.getElementById("group-row").innerHTML = html;
+
+    document.querySelectorAll(".group-card").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var g = btn.getAttribute("data-group");
+        state.filterGroup = state.filterGroup === g ? "TODOS" : g;
+        renderAll();
+      });
+    });
+  }
+
+  function renderTabs() {
+    var groups = ["TODOS", "XPT", "SVC", "NEX", "DC"];
+    var html = groups.map(function (g) {
+      return '<button class="' + (state.filterGroup === g ? "active" : "") + '" data-group="' + g + '">' + (g === "TODOS" ? "Todos" : g) + '</button>';
+    }).join("");
+    document.getElementById("group-tabs").innerHTML = html;
+    document.querySelectorAll("#group-tabs button").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.filterGroup = btn.getAttribute("data-group");
+        renderAll();
+      });
+    });
+  }
+
+  function statusOptionsHtml(current) {
+    return STATUS_OPTIONS.map(function (s) {
+      var colors = TONE_COLORS[STATUS_TONE[s] || "muted"];
+      var style = "color:" + colors.fg + ";background-color:" + colors.bg + ";";
+      return '<option value="' + escapeHtml(s) + '" style="' + style + '"' + (s === current ? " selected" : "") + '>' + (s === "" ? "— sem status —" : escapeHtml(s)) + '</option>';
+    }).join("");
+  }
+
+  // Antes de reconstruir o tbody (chamado tanto por edições locais quanto por
+  // gatilhos externos — sync automático do Firebase a cada
+  // FIREBASE_SYNC_INTERVAL_MS, clique num cabeçalho pra ordenar, etc.),
+  // guarda o campo com foco e o texto exato que
+  // está nele (mesmo vazio). Sem isso, um desses gatilhos no meio de uma
+  // edição reconstrói o input a partir do valor já salvo (ex.: 0) e a pessoa
+  // vê o campo "voltar" pro número antigo mesmo tendo acabado de apagá-lo.
+  function captureFocusedInput() {
+    var tbody = document.getElementById("tbody");
+    var active = document.activeElement;
+    if (!active || !tbody.contains(active)) return null;
+    var tr = active.closest("tr");
+    var field = active.getAttribute("data-field");
+    if (!tr || !field) return null;
+    var info = { id: tr.getAttribute("data-id"), field: field, value: active.value };
+    if (typeof active.selectionStart === "number") {
+      info.selectionStart = active.selectionStart;
+      info.selectionEnd = active.selectionEnd;
+    }
+    return info;
+  }
+
+  function restoreFocusedInput(info) {
+    if (!info) return;
+    var el = document.querySelector('#tbody tr[data-id="' + info.id + '"] [data-field="' + info.field + '"]');
+    if (!el) return;
+    el.value = info.value;
+    el.focus();
+    if (typeof info.selectionStart === "number" && el.setSelectionRange) {
+      try { el.setSelectionRange(info.selectionStart, info.selectionEnd); } catch (e) {}
+    }
+  }
+
+  function renderTable() {
+    var focusInfo = captureFocusedInput();
+    var rows = filteredRows();
+    var tbody = document.getElementById("tbody");
+    var emptyState = document.getElementById("empty-state");
+
+    if (!rows.length) {
+      tbody.innerHTML = "";
+      emptyState.style.display = "block";
+    } else {
+      emptyState.style.display = "none";
+      tbody.innerHTML = rows.map(function (r) {
+        var t = total(r);
+        var p = pending(r);
+        var tone = pendingTone(p);
+        var statusTone = STATUS_TONE[r.status] || "muted";
+        return '<tr data-id="' + r.id + '" class="' + (p <= 0 ? "zero-pending" : "") + '">' +
+          '<td class="col-origem"><span class="cat-badge"><span class="dot" style="background:' + CATEGORIES[r.grupo].color + '"></span>' + r.grupo + '</span> <span class="origin-name">' + escapeHtml(r.origem) + '</span></td>' +
+          '<td class="num" data-label="Backlog"><input type="number" min="0" data-field="backlog" value="' + r.backlog + '"></td>' +
+          '<td class="num" data-label="Planejadas SPA1"><span class="field-with-lock"><input type="number" min="0" data-field="spa1" class="' + (r.spa1Manual ? "manual-input" : "") + '" value="' + r.spa1 + '">' + (r.spa1Manual ? '<button type="button" class="manual-lock" data-unlock="spa1" title="Travado manualmente — clique para voltar ao automático">🔒</button>' : '') + '</span></td>' +
+          '<td class="num" data-label="Planejadas SPA2"><span class="field-with-lock"><input type="number" min="0" data-field="spa2" class="' + (r.spa2Manual ? "manual-input" : "") + '" value="' + r.spa2 + '">' + (r.spa2Manual ? '<button type="button" class="manual-lock" data-unlock="spa2" title="Travado manualmente — clique para voltar ao automático">🔒</button>' : '') + '</span></td>' +
+          '<td class="num calc-cell" data-label="Total">' + t + '</td>' +
+          '<td class="num" data-label="Expedidas"><span class="field-with-lock"><input type="number" min="0" data-field="expedidas" class="' + (r.expedidasManual ? "manual-input" : "") + '" value="' + r.expedidas + '">' + (r.expedidasManual ? '<button type="button" class="manual-lock" data-unlock="expedidas" title="Travado manualmente — clique para voltar ao automático">🔒</button>' : '') + '</span></td>' +
+          '<td class="num" data-label="Pendentes"><span class="pending-pill ' + tone + '">' + p + '</span></td>' +
+          '<td class="num" data-label="Impacto DIT"><input type="number" min="0" data-field="impactoDit" value="' + r.impactoDit + '"></td>' +
+          '<td class="center-col" data-label="Status"><span class="status-fill-wrap"><select class="status-select s-' + statusTone + '" data-field="status">' + statusOptionsHtml(r.status) + '</select><span class="fill-handle" data-fill-handle="status" title="Arrastar para replicar este status"></span></span></td>' +
+          '<td class="center-col" data-label="Observação"><input type="text" data-field="obs" value="' + escapeHtml(r.obs) + '" placeholder="Observação..."></td>' +
+        '</tr>';
+      }).join("");
+    }
+
+    var sum = baseFilteredRows().reduce(function (a, r) {
+      a.backlog += Number(r.backlog) || 0;
+      a.spa1 += Number(r.spa1) || 0;
+      a.spa2 += Number(r.spa2) || 0;
+      a.total += total(r);
+      a.exp += Number(r.expedidas) || 0;
+      a.pend += pending(r);
+      return a;
+    }, { backlog: 0, spa1: 0, spa2: 0, total: 0, exp: 0, pend: 0 });
+    sum.pend = Math.max(0, sum.pend);
+
+    document.getElementById("f-count").textContent = rows.length + " " + (rows.length === 1 ? "origem" : "origens");
+    document.getElementById("f-backlog").textContent = fmtMilhar(sum.backlog);
+    document.getElementById("f-spa1").textContent = fmtMilhar(sum.spa1);
+    document.getElementById("f-spa2").textContent = fmtMilhar(sum.spa2);
+    document.getElementById("f-total").textContent = fmtMilhar(sum.total);
+    document.getElementById("f-exp").textContent = fmtMilhar(sum.exp);
+    document.getElementById("f-pend").textContent = fmtMilhar(sum.pend);
+
+    renderSortIndicators();
+    bindRowEvents();
+    bindFillHandleEvents();
+    restoreFocusedInput(focusInfo);
+  }
+
+  function renderSortIndicators() {
+    document.querySelectorAll("thead th[data-sort]").forEach(function (th) {
+      var field = th.getAttribute("data-sort");
+      var arrow = th.querySelector(".sort-arrow");
+      if (field === state.sortField) {
+        th.classList.add("sort-active");
+        arrow.textContent = state.sortDir === 1 ? "▲" : "▼";
+      } else {
+        th.classList.remove("sort-active");
+        arrow.textContent = "";
+      }
+    });
+  }
+
+  function bindSortEvents() {
+    document.querySelectorAll("thead th[data-sort]").forEach(function (th) {
+      th.addEventListener("click", function () {
+        var field = th.getAttribute("data-sort");
+        if (state.sortField === field) {
+          state.sortDir = -state.sortDir;
+        } else {
+          state.sortField = field;
+          state.sortDir = 1;
+        }
+        renderTable();
+      });
+    });
+  }
+
+  function bindRowEvents() {
+    var tbody = document.getElementById("tbody");
+    tbody.querySelectorAll("[data-field]").forEach(function (el) {
+      var evt = (el.tagName === "SELECT") ? "change" : "input";
+      el.addEventListener(evt, function () {
+        var tr = el.closest("tr");
+        var id = Number(tr.getAttribute("data-id"));
+        var row = state.rows.find(function (r) { return r.id === id; });
+        if (!row) return;
+        var field = el.getAttribute("data-field");
+        if (field === "backlog" || field === "spa1" || field === "spa2" || field === "expedidas") {
+          var v = parseInt(el.value, 10);
+          row[field] = isNaN(v) ? 0 : Math.max(0, v);
+          if (field === "spa1") row.spa1Manual = true;
+          if (field === "spa2") row.spa2Manual = true;
+          if (field === "expedidas") row.expedidasManual = true;
+          var t = total(row), p = pending(row);
+          tr.querySelector(".calc-cell").textContent = t;
+          var pill = tr.querySelector(".pending-pill");
+          var tone = pendingTone(p);
+          pill.className = "pending-pill " + tone;
+          pill.textContent = p;
+          tr.classList.toggle("zero-pending", p <= 0);
+          if (p <= 0 && row.status !== "✅") {
+            row.status = "✅";
+            var statusSelect = tr.querySelector('[data-field="status"]');
+            if (statusSelect) {
+              statusSelect.value = "✅";
+              statusSelect.className = "status-select s-" + (STATUS_TONE["✅"] || "muted");
+            }
+          }
+          renderKpis();
+          renderGroups();
+          renderTabs();
+          updateFooter();
+          if (field === "backlog" || field === "spa1" || field === "spa2" || field === "expedidas") pushManualField(row);
+        } else if (field === "status") {
+          row.status = el.value;
+          var tone2 = STATUS_TONE[row.status] || "muted";
+          el.className = "status-select s-" + tone2;
+          pushManualField(row);
+        } else if (field === "obs") {
+          row.obs = el.value;
+          pushManualField(row);
+        } else if (field === "impactoDit") {
+          var vDit = parseInt(el.value, 10);
+          row.impactoDit = isNaN(vDit) ? 0 : Math.max(0, vDit);
+          pushManualField(row);
+        }
+        persist();
+      });
+    });
+    tbody.querySelectorAll(".manual-lock").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var tr = btn.closest("tr");
+        var id = Number(tr.getAttribute("data-id"));
+        var field = btn.getAttribute("data-unlock");
+        unlockField(id, field);
+      });
+    });
+  }
+
+  // Alça de preenchimento do Status (equivalente ao "arrastar" do Excel):
+  // segurar o quadradinho no canto do select e arrastar sobre outras linhas
+  // aplica o mesmo status em todas elas, do jeito que um fill handle de
+  // planilha replica o valor de uma célula pras vizinhas.
+  function bindFillHandleEvents() {
+    var tbody = document.getElementById("tbody");
+    tbody.querySelectorAll('[data-fill-handle="status"]').forEach(function (handle) {
+      handle.addEventListener("mousedown", function (e) {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        var startTr = handle.closest("tr");
+        if (!startTr) return;
+        var startId = Number(startTr.getAttribute("data-id"));
+        var startRow = state.rows.find(function (r) { return r.id === startId; });
+        if (!startRow) return;
+        var sourceStatus = startRow.status;
+
+        var allTrs = Array.prototype.slice.call(tbody.querySelectorAll("tr[data-id]"));
+        var startIdx = allTrs.indexOf(startTr);
+
+        handle.classList.add("filling");
+        document.body.classList.add("filling-status");
+
+        function highlight(targetIdx) {
+          var lo = Math.min(startIdx, targetIdx);
+          var hi = Math.max(startIdx, targetIdx);
+          allTrs.forEach(function (tr, idx) {
+            tr.classList.toggle("fill-target", idx >= lo && idx <= hi);
+          });
+        }
+
+        function idxAtPoint(x, y) {
+          var el = document.elementFromPoint(x, y);
+          var tr = el ? el.closest("tr[data-id]") : null;
+          return tr ? allTrs.indexOf(tr) : -1;
+        }
+
+        highlight(startIdx);
+
+        function onMove(ev) {
+          var idx = idxAtPoint(ev.clientX, ev.clientY);
+          if (idx !== -1) highlight(idx);
+        }
+
+        function onUp(ev) {
+          document.removeEventListener("mousemove", onMove);
+          document.removeEventListener("mouseup", onUp);
+          handle.classList.remove("filling");
+          document.body.classList.remove("filling-status");
+          allTrs.forEach(function (tr) { tr.classList.remove("fill-target"); });
+
+          var targetIdx = idxAtPoint(ev.clientX, ev.clientY);
+          if (targetIdx === -1) targetIdx = startIdx;
+          var lo = Math.min(startIdx, targetIdx);
+          var hi = Math.max(startIdx, targetIdx);
+          if (lo === hi) return;
+
+          var changed = 0;
+          for (var i = lo; i <= hi; i++) {
+            var id = Number(allTrs[i].getAttribute("data-id"));
+            var row = state.rows.find(function (r) { return r.id === id; });
+            if (row && row.status !== sourceStatus) {
+              row.status = sourceStatus;
+              pushManualField(row);
+              changed++;
+            }
+          }
+          if (changed) {
+            persist();
+            renderTable();
+            showToast('Status "' + (sourceStatus || "— sem status —") + '" replicado em ' + changed + ' linha(s).');
+          }
+        }
+
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+      });
+    });
+  }
+
+  function updateFooter() {
+    var rows = baseFilteredRows();
+    var sum = rows.reduce(function (a, r) {
+      a.backlog += Number(r.backlog) || 0;
+      a.spa1 += Number(r.spa1) || 0;
+      a.spa2 += Number(r.spa2) || 0;
+      a.total += total(r);
+      a.exp += Number(r.expedidas) || 0;
+      a.pend += pending(r);
+      return a;
+    }, { backlog: 0, spa1: 0, spa2: 0, total: 0, exp: 0, pend: 0 });
+    sum.pend = Math.max(0, sum.pend);
+    document.getElementById("f-backlog").textContent = fmtMilhar(sum.backlog);
+    document.getElementById("f-spa1").textContent = fmtMilhar(sum.spa1);
+    document.getElementById("f-spa2").textContent = fmtMilhar(sum.spa2);
+    document.getElementById("f-total").textContent = fmtMilhar(sum.total);
+    document.getElementById("f-exp").textContent = fmtMilhar(sum.exp);
+    document.getElementById("f-pend").textContent = fmtMilhar(sum.pend);
+  }
+
+  function renderAll() {
+    renderKpis();
+    renderGroups();
+    renderTabs();
+    renderTable();
+  }
+
+  function showToast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(showToast._h);
+    showToast._h = setTimeout(function () { t.classList.remove("show"); }, 2600);
+  }
+
+  function toCsv() {
+    var header = ["Grupo", "Origem", "Backlog", "Planejadas SPA1", "Planejadas SPA2", "Total", "Rotas Expedidas", "Rotas Pendentes", "Impacto DIT", "Status", "Observação"];
+    var lines = [header.join(",")];
+    state.rows.forEach(function (r) {
+      var cells = [r.grupo, r.origem, r.backlog, r.spa1, r.spa2, total(r), r.expedidas, pending(r), r.impactoDit, r.status, r.obs];
+      lines.push(cells.map(function (c) {
+        var s = String(c == null ? "" : c);
+        if (/[",\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      }).join(","));
+    });
+    return lines.join("\r\n");
+  }
+
+  function parseCsvText(text) {
+    // Minimal RFC4180 parser: handles quoted fields, escaped quotes, commas/newlines inside quotes.
+    var rows = [];
+    var row = [];
+    var field = "";
+    var inQuotes = false;
+    var i = 0;
+    text = text.replace(/^﻿/, "");
+    while (i < text.length) {
+      var c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+          inQuotes = false; i++; continue;
+        }
+        field += c; i++; continue;
+      }
+      if (c === '"') { inQuotes = true; i++; continue; }
+      if (c === ",") { row.push(field); field = ""; i++; continue; }
+      if (c === "\r") { i++; continue; }
+      if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; i++; continue; }
+      field += c; i++;
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows.filter(function (r) { return r.length > 1 || (r.length === 1 && r[0] !== ""); });
+  }
+
+  function normalizeHeader(h) {
+    return String(h || "").trim().toLowerCase()
+      .normalize("NFD").replace(/[̀-ͯ]/g, "");
+  }
+
+  // Acha a linha de cabeçalho dentro das primeiras linhas do CSV (alguns
+  // exports vêm com uma linha em branco antes do cabeçalho de verdade).
+  // Reconhece tanto o formato do próprio painel ("Origem") quanto o CSV de
+  // planejamento de distribuição por rota ("MLP").
+  function findCsvHeaderRow(table) {
+    for (var i = 0; i < Math.min(table.length, 5); i++) {
+      var h = table[i].map(normalizeHeader);
+      if (h.indexOf("origem") !== -1 || h.indexOf("mlp") !== -1) return { index: i, header: h };
+    }
+    return null;
+  }
+
+  // CSV de planejamento de distribuição (coluna MLP, uma linha por rota):
+  // conta quantas rotas cada MLP tem e usa isso pra sobrescrever só o campo
+  // Planejadas SPA1 das origens do grupo SVC com o mesmo nome — sem mexer no
+  // resto do painel (outros grupos, Backlog, Status, Observação etc.).
+  function importMlpDistribution(table, headerIndex, header) {
+    var idxMlp = header.indexOf("mlp");
+    var countsByNorm = {};
+    for (var r = headerIndex + 1; r < table.length; r++) {
+      var mlp = (table[r][idxMlp] || "").trim();
+      if (!mlp) continue;
+      var norm = mlp.toLowerCase();
+      countsByNorm[norm] = (countsByNorm[norm] || 0) + 1;
+    }
+    var matches = [];
+    state.rows.forEach(function (rw) {
+      if (rw.grupo !== "SVC") return;
+      var norm = rw.origem.trim().toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(countsByNorm, norm)) {
+        matches.push({ row: rw, count: countsByNorm[norm] });
+        delete countsByNorm[norm];
+      }
+    });
+    var naoEncontrados = Object.keys(countsByNorm);
+    if (!matches.length) {
+      showToast("Nenhuma origem SVC do painel corresponde às MLPs do CSV.");
+      return;
+    }
+    var resumo = matches.map(function (m) { return m.row.origem + ": " + m.count; }).join("\n");
+    var msg = "Atualizar Planejadas SPA1 (SVC) com base no CSV de distribuição?\n\n" + resumo;
+    if (naoEncontrados.length) msg += "\n\nMLP(s) do CSV sem origem correspondente no SVC: " + naoEncontrados.join(", ");
+    if (!confirm(msg)) return;
+    matches.forEach(function (m) {
+      m.row.spa1 = m.count;
+      m.row.spa1Manual = true;
+      pushManualField(m.row);
+    });
+    persist();
+    renderAll();
+    showToast("Planejadas SPA1 atualizado para " + matches.length + " origem(ns) do SVC.");
+  }
+
+  function importCsvFile(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
       try {
-        await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, { route_id:id, reversa_hora:val, updated_at:new Date().toISOString() })
-        setSyncStatus("ok","Online"); showToast(`⏱ Início: ${val}`,"ok")
-      } catch(err){ setSyncStatus("err","Erro"); showToast("❌ Erro ao salvar","err"); console.error(err) }
-    }
-    popup.querySelector(".yms-ok").onclick = save
-    popup.querySelector(".yms-time-input").addEventListener("keydown", ev => {
-      if (ev.key==="Enter") save(); if (ev.key==="Escape") close()
-    })
-    setTimeout(() => document.addEventListener("click", function h(ev){
-      if (!popup.contains(ev.target) && ev.target !== editSpan){ close(); document.removeEventListener("click",h) }
-    }), 100)
-    return
-  }
-
-  // ── HR INICIO apagar ─────────────────────────────────────────────
-  const clearSpan = e.target.closest(".rev-clear")
-  if (clearSpan) {
-    const id = clearSpan.dataset.id
-    if (!id) return
-    if (!manualMap[id]) return
-    manualMap[id].reversa_hora = ""
-    render()
-    setSyncStatus("loading","Salvando…")
-    try {
-      await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, { route_id:id, reversa_hora:"", updated_at:new Date().toISOString() })
-      setSyncStatus("ok","Online"); showToast("🗑 Hora apagada","ok")
-    } catch(err){ setSyncStatus("err","Erro"); showToast("❌ Erro ao salvar","err"); console.error(err) }
-    return
-  }
-
-  // ── Reversa type toggle (MP / PCT) ───────────────────────────────
-  const tgl = e.target.closest(".rtgl")
-  if (tgl) {
-    const id    = tgl.dataset.id
-    const rtype = tgl.dataset.rtype
-    if (!id) return
-    if (!manualMap[id]) manualMap[id] = { doca:"-", status_patio:"Não Chegou", perfil:"Granel", reversa_hora:"", reversa_tipo:"—" }
-    // Toggle: clique no mesmo → desmarca; clique em outro → marca
-    const cur = manualMap[id].reversa_tipo || "—"
-    const newType = cur === rtype ? "—" : rtype
-    manualMap[id].reversa_tipo = newType
-    render()
-    const row = tgl.closest("tr")
-    if (row) { row.classList.remove("saved"); void row.offsetWidth; row.classList.add("saved") }
-    setSyncStatus("loading", "Salvando…")
-    try {
-      await rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, { route_id:id, reversa_tipo:newType, updated_at:new Date().toISOString() })
-      setSyncStatus("ok", "Online")
-      showToast(newType !== "—" ? `✅ ${newType}` : "✅ Tipo removido", "ok")
-    } catch(err) { setSyncStatus("err","Erro"); showToast("❌ Erro ao salvar","err"); console.error(err) }
-  }
-})
-
-// ── Bootstrap ────────────────────────────────────────────────────────
-;(async () => {
-  try {
-    loading("Carregando dados da nuvem…")
-    await loadDate0Config()
-    await loadDate2Config()
-    await loadCloudCSV()
-    await loadManual()
-    applyFilter()
-    done()
-    startPolling()
-    setSyncStatus("ok", "Online")
-  } catch(e) {
-    done()
-    setSyncStatus("err", "Offline")
-    setStatus("⚠ " + e.message, "#f87171")
-    console.error(e)
-  }
-})()
-
-// ── Utilities ────────────────────────────────────────────────────────
-function todayStr() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`
-}
-function loading(msg) { $("overlayMsg").textContent = msg||"Carregando…"; $("overlay").classList.add("show") }
-function done()       { $("overlay").classList.remove("show") }
-function setStatus(msg, color) { $("uploadStatus").textContent = msg; $("uploadStatus").style.color = color||"" }
-function v(obj, key)  { const r = obj[key]; return r == null ? "" : String(r).trim() }
-function encodeKey(id){ return String(id).replace(/[.#$[\]/]/g,"_") }
-function hhmm(dt) {
-  const s = String(dt||""), m = s.match(/(\d{2}:\d{2})/)
-  return m ? m[1] : "—"
-}
-function setSyncStatus(state, label) {
-  const d = $("syncDot")
-  d.className = "sync-dot" + (state==="err"?" err":state==="loading"?" loading":"")
-  $("syncLabel").textContent = label
-}
-function showToast(msg, type="") {
-  const t = $("toast")
-  $("toastMsg").textContent = msg
-  t.className = "show " + type
-  clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => { t.className = "" }, 2600)
-}
-function normalizeDate(raw) {
-  if (!raw && raw !== 0) return ""
-  const s = String(raw).trim()
-  if (!s || s === "nan") return ""
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.replace("T"," ")
-  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[T\s]+(\d{1,2}:\d{2}))?/)
-  if (dmy) {
-    const [,d,m,y,t] = dmy
-    return `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}` + (t ? " "+t+":00" : " 00:00:00")
-  }
-  if (/^\d+(\.\d+)?$/.test(s) && typeof XLSX!=="undefined") {
-    try {
-      const dt = XLSX.SSF.parse_date_code(parseFloat(s))
-      if (dt) return `${dt.y}-${String(dt.m).padStart(2,"0")}-${String(dt.d).padStart(2,"0")} ${String(dt.H).padStart(2,"0")}:${String(dt.M).padStart(2,"0")}:00`
-    } catch(e) {}
-  }
-  return s
-}
-
-// ── RTDB REST ────────────────────────────────────────────────────────
-async function rtdbGet(path) {
-  const r = await fetch(`${RTDB}/${path}.json`)
-  if (!r.ok) throw new Error(`RTDB GET ${path}: HTTP ${r.status}`)
-  return r.json()
-}
-async function rtdbPut(path, data) {
-  const r = await fetch(`${RTDB}/${path}.json`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)})
-  if (!r.ok) throw new Error(`RTDB PUT: HTTP ${r.status}`)
-  return r.json()
-}
-async function rtdbPatch(path, data) {
-  const r = await fetch(`${RTDB}/${path}.json`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)})
-  if (!r.ok) throw new Error(`RTDB PATCH: HTTP ${r.status}`)
-  return r.json()
-}
-async function rtdbDelete(path) {
-  const r = await fetch(`${RTDB}/${path}.json`,{method:"DELETE"})
-  if (!r.ok) throw new Error(`RTDB DELETE: HTTP ${r.status}`)
-}
-
-// ── File upload ──────────────────────────────────────────────────────
-function handleUpload() {
-  const file = $("fileInput").files[0]
-  if (!file) { showToast("⚠ Selecione um arquivo primeiro","err"); return }
-  const name = file.name.toLowerCase()
-  if (name.endsWith(".xlsx")||name.endsWith(".xls")) readXLSX(file, true)
-  else readCSV(file, true)
-}
-
-function readXLSX(file, saveCloud) {
-  loading("Lendo XLSX…")
-  const reader = new FileReader()
-  reader.onload = e => {
-    try {
-      const wb   = XLSX.read(new Uint8Array(e.target.result),{type:"array",cellDates:false})
-      const ws   = wb.Sheets[wb.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json(ws,{raw:true,defval:""})
-      const cols = ["Destino ETA","Destino ATA","Destino ATD","Origem ETA","Origem ATA","Origem ATD"]
-      for (const row of rows) for (const c of cols) if (row[c]!=="") row[c]=normalizeDate(row[c])
-      processAndMaybeUpload(rows, saveCloud)
-    } catch(err){ done(); showToast("❌ Erro XLSX: "+err.message,"err"); console.error(err) }
-  }
-  reader.readAsArrayBuffer(file)
-}
-
-function readCSV(file, saveCloud) {
-  loading("Lendo CSV…")
-  Papa.parse(file,{
-    header:true, skipEmptyLines:true,
-    transformHeader: h => (h||"").replace(/^\uFEFF/,"").trim(),
-    complete: r => processAndMaybeUpload(r.data, saveCloud),
-    error: e => { done(); showToast("❌ Erro CSV: "+e.message,"err") }
-  })
-}
-
-async function processAndMaybeUpload(rows, saveCloud) {
-  allRows = rows
-  // ✅ Show table IMMEDIATELY — no waiting for cloud
-  applyFilter()
-  done()
-  setStatus(`📊 ${rows.length} linhas lidas.`, "#4ade80")
-
-  if (!saveCloud) return
-
-  // Upload to cloud in background
-  loading("Salvando na nuvem…")
-  setSyncStatus("loading","Enviando…")
-  try {
-    await rtdbDelete("lh_csv_cache")
-    const chunks = {}
-    for (let i = 0; i * CHUNK < rows.length; i++) {
-      chunks["chunk_"+String(i).padStart(3,"0")] = {
-        chunk: i,
-        data: JSON.stringify(rows.slice(i*CHUNK,(i+1)*CHUNK)),
-        updated_at: new Date().toISOString()
+        var table = parseCsvText(String(reader.result));
+        if (!table.length) { showToast("Arquivo CSV vazio."); return; }
+        var found = findCsvHeaderRow(table);
+        if (!found) {
+          showToast('CSV inválido: cabeçalho não encontrado (esperado "Origem" ou "MLP").');
+          return;
+        }
+        var header = found.header;
+        if (header.indexOf("mlp") !== -1) {
+          importMlpDistribution(table, found.index, header);
+          return;
+        }
+        var idx = {
+          grupo: header.indexOf("grupo"),
+          origem: header.indexOf("origem"),
+          backlog: header.indexOf("backlog"),
+          spa1: header.indexOf("planejadas spa1"),
+          spa2: header.indexOf("planejadas spa2"),
+          expedidas: header.indexOf("rotas expedidas"),
+          impactoDit: header.indexOf("impacto dit"),
+          status: header.indexOf("status"),
+          obs: header.indexOf("observacao")
+        };
+        if (idx.origem === -1) {
+          showToast('CSV inválido: coluna "Origem" não encontrada.');
+          return;
+        }
+        var imported = [];
+        for (var r = found.index + 1; r < table.length; r++) {
+          var cols = table[r];
+          var origem = (cols[idx.origem] || "").trim();
+          if (!origem) continue;
+          var grupo = (idx.grupo !== -1 ? cols[idx.grupo] : "").trim().toUpperCase();
+          if (!CATEGORIES[grupo]) grupo = "XPT";
+          imported.push({
+            id: state.nextId++,
+            grupo: grupo,
+            origem: origem,
+            backlog: Math.max(0, parseInt(cols[idx.backlog], 10) || 0),
+            spa1: Math.max(0, parseInt(cols[idx.spa1], 10) || 0),
+            spa2: Math.max(0, parseInt(cols[idx.spa2], 10) || 0),
+            expedidas: Math.max(0, parseInt(cols[idx.expedidas], 10) || 0),
+            impactoDit: idx.impactoDit !== -1 ? Math.max(0, parseInt(cols[idx.impactoDit], 10) || 0) : 0,
+            status: idx.status !== -1 ? (cols[idx.status] || "").trim() : "",
+            obs: idx.obs !== -1 ? (cols[idx.obs] || "").trim() : ""
+          });
+        }
+        if (!imported.length) { showToast("Nenhuma linha válida encontrada no CSV."); return; }
+        if (!confirm("Importar " + imported.length + " origem(ns) do CSV? Isso substitui os dados atuais do painel.")) return;
+        state.rows = imported;
+        persist();
+        renderAll();
+        showToast(imported.length + " origem(ns) importada(s) do CSV.");
+      } catch (e) {
+        showToast("Erro ao ler o CSV: " + e.message);
       }
-    }
-    await rtdbPut("lh_csv_cache", chunks)
-    setStatus(`✅ ${rows.length} linhas na nuvem!`, "#4ade80")
-    setSyncStatus("ok","Online")
-    showToast(`✅ ${rows.length} rotas enviadas!`,"ok")
-  } catch(e) {
-    console.error(e)
-    setSyncStatus("err","Erro")
-    showToast("❌ Erro ao enviar: "+e.message,"err")
+    };
+    reader.readAsText(file, "utf-8");
   }
-  done()
-}
 
-async function loadCloudCSV() {
-  const data = await rtdbGet("lh_csv_cache")
-  if (!data) { setStatus("Sem dados. Envie um arquivo.","#9aa0b8"); return }
-  let combined = []
-  for (const k of Object.keys(data).sort())
-    combined = combined.concat(JSON.parse(data[k].data||"[]"))
-  allRows = combined
-  setStatus(`☁ ${allRows.length} linhas carregadas.`, "#60a5fa")
-}
-
-async function loadManual() {
-  const data = await rtdbGet("lh_monitoramento")
-  manualMap = {}
-  if (data) for (const [k,val] of Object.entries(data)) manualMap[val.route_id||k] = val
-  lastManualHash = JSON.stringify(manualMap)
-  // Restaura placas manuais da data atual que foram salvas no Firebase
-  injectManualPlates()
-}
-
-// Injeta placas manuais (MANUAL_*) do manualMap em filtered se ainda não estiverem
-function injectManualPlates() {
-  for (const [id, val] of Object.entries(manualMap)) {
-    if (!id.startsWith("MANUAL_")) continue
-    if (val.data_ref && val.data_ref !== selectedDate) continue
-    if (!filtered.find(r => r.id === id)) {
-      filtered.push({
-        id,
-        placa:    val.placa_manual    || id.split("_")[1] || "—",
-        ymsIn:    "", ymsOut:   "", pacotes:  "",
-        motorista: val.motorista_manual || "",
-        _manual:  true
-      })
+  // Baixa um arquivo tanto dentro do artifact (window.claude.downloads) quanto
+  // num navegador normal (arquivo local aberto direto ou hospedado no Cloudflare).
+  async function downloadBlob(filename, blob) {
+    if (window.claude && window.claude.downloads) {
+      return window.claude.downloads.save({ filename: filename, data: blob });
     }
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+    return { status: "saved" };
   }
-}
 
-// ── Polling ──────────────────────────────────────────────────────────
-function startPolling() {
-  if (pollTimer) clearInterval(pollTimer)
-  pollTimer = setInterval(async () => {
+  async function exportCsv() {
+    var csv = toCsv();
+    var blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
     try {
-      const data = await rtdbGet("lh_monitoramento")
-      const nm = {}
-      if (data) for (const [k,val] of Object.entries(data)) nm[val.route_id||k] = val
-      const h = JSON.stringify(nm)
-      if (h !== lastManualHash) {
-        manualMap = nm
-        lastManualHash = h
-        injectManualPlates()
-        render()
+      await downloadBlob("expedicao_spa1_spa2.csv", blob);
+      showToast("CSV baixado — importe em Arquivo > Importar no Google Sheets.");
+    } catch (err) {
+      if (err && (err.code === "extension_not_enabled" || err.code === "rejected_extension")) {
+        try {
+          await downloadBlob("expedicao_spa1_spa2.txt", blob);
+          showToast("Baixado como .txt (compatível) — importe no Sheets como CSV.");
+          return;
+        } catch (err2) { /* fall through */ }
       }
-      setSyncStatus("ok","Online")
-    } catch(e) { setSyncStatus("err","Offline"); console.warn("Poll:",e) }
-  }, POLL_MS)
-}
-
-// ── Filter / process ─────────────────────────────────────────────────
-function applyFilter() {
-  selectedDate = $("datePicker").value
-  processData(allRows)   // calls render() internally
-  // inject manual plates and re-sort+render if any were added
-  const before = filtered.length
-  injectManualPlates()
-  if (filtered.length !== before) {
-    // Re-sort to place manual plates in correct ymsIn order
-    filtered.sort((a,b) => {
-      const grpA = a._anterior ? 0 : a._antecipada ? 2 : 1
-      const grpB = b._anterior ? 0 : b._antecipada ? 2 : 1
-      if (grpA !== grpB) return grpA - grpB
-      const ae = effectiveIn(a), be = effectiveIn(b)
-      if (!ae && !be) return 0
-      if (!ae) return 1
-      if (!be) return -1
-      return ae.localeCompare(be)
-    })
-    render()
-  }
-}
-
-// ── Resolve ymsIn: CSV tem prioridade, fallback para manual ──────────
-function effectiveIn(r) {
-  const csv = hhmm(r.ymsIn)
-  if (csv !== "—") return csv
-  return manualMap[r.id]?.yms_in_manual || ""
-}
-
-/**
- * =SEERRO(SORT(FILTER(
- *   {L \ Z \ AA \ AK};          Placa, DestinoATA, DestinoATD, Pacotes
- *   OU(X="SPA1";X="SPA2") *      Destino
- *   INT(Y)=HOJE() *             INT(Destino ETA) = data ref
- *   E<>"RODOPENHA" *            Motorista
- *   L<>""                       Placa não vazia
- * );2;VERDADEIRO);"")           Ordena por Z (ATA) ASC
- */
-function processData(rows) {
-  if (!rows?.length) { filtered=[]; render(); return }
-  filtered = []
-  const autoUpdates = []
-
-  for (const src of rows) {
-    const placa     = v(src,"Veículo de carga 1")||v(src,"Veículo de carga 2")
-    const destino   = v(src,"Destino").toUpperCase()
-    const etaDate   = normalizeDate(v(src,"Destino ETA")).substring(0,10)
-    const motorista = v(src,"Motorista").toUpperCase()
-    const ymsIn     = normalizeDate(v(src,"Destino ATA"))
-    const ymsOut    = normalizeDate(v(src,"Destino ATD"))
-    const pacotes   = v(src,"Pacotes")
-    const id        = v(src,"Route ID")
-
-    if (destino !== "SPA1" && destino !== "SPA2")             continue
-    if (motorista.includes("RODOPENHA"))                     continue
-    if (!placa||placa.toLowerCase().includes("sem placa"))   continue
-
-    const isMain = etaDate === selectedDate
-    const isAnt  = date2Active && selectedDate2 && etaDate === selectedDate2 && antecipSel.has(id)
-    const isAnt0 = date0Active && selectedDate0 && etaDate === selectedDate0 && ant0Sel.has(id)
-
-    if (!isMain && !isAnt && !isAnt0) continue
-
-    // ── Excluir operações que começaram e terminaram antes/durante o dia anterior ──
-    // Se YMS IN é de data anterior ao dia selecionado E YMS OUT está preenchido
-    // → operação já concluída de um dia anterior, não exibir na tabela atual
-    if (isMain && ymsIn && ymsOut && ymsOut.trim()) {
-      const inDate = ymsIn.substring(0,10)
-      if (inDate < selectedDate) continue
+      if (err && err.code === "declined") return;
+      showToast("Não foi possível baixar o arquivo agora.");
     }
+  }
 
-    // Auto-Concluída: YMS OUT preenchido
-    if (ymsOut && ymsOut.trim()) {
-      const cur = manualMap[id]?.status_patio || ""
-      if (cur !== "Concluída") {
-        if (!manualMap[id]) manualMap[id] = {}
-        manualMap[id].status_patio = "Concluída"
-        manualMap[id].route_id     = id
-        autoUpdates.push({ id, status: "Concluída" })
+  // ==========================
+  // CAPTURA EM IMAGEM (PNG HD)
+  // ==========================
+  // Desenhado direto em <canvas> (sem SVG+foreignObject): o Chrome marca como
+  // "tainted" qualquer canvas pintado a partir de uma imagem SVG que contenha
+  // HTML embutido, mesmo sendo tudo same-origin, e bloqueia a exportação. Por
+  // isso o relatório é desenhado com primitivas de canvas (retângulos/texto).
+
+  var CAP = {
+    W: 1360, PAD: 28,
+    bg: "#faf9f4", surface: "#ffffff", border: "#e0ddcd", borderStrong: "#cac6b0", accent: "#26297e",
+    text: "#201f19", textMuted: "#6d6a5a", textFaint: "#97937e",
+    brand: "#ffe600", brandInk: "#3a3300",
+    good: "#16794f", goodSoft: "#e0f5ea", warn: "#9a5b0a", warnSoft: "#fbead0",
+    critical: "#b23127", criticalSoft: "#fbe4e0", info: "#1f5fa6", infoSoft: "#e2edf9",
+    muted: "#6d6a5a", mutedSoft: "#ecebe2",
+    cat: { XPT: "#2e5fa3", SVC: "#7a4fa8", NEX: "#147d72", DC: "#a85f1f" },
+    fontFamily: '-apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+  };
+
+  function capRoundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function capToneColors(tone) {
+    if (tone === "good") return { fg: CAP.good, bg: CAP.goodSoft };
+    if (tone === "warn") return { fg: CAP.warn, bg: CAP.warnSoft };
+    if (tone === "critical") return { fg: CAP.critical, bg: CAP.criticalSoft };
+    if (tone === "info") return { fg: CAP.info, bg: CAP.infoSoft };
+    return { fg: CAP.muted, bg: CAP.mutedSoft };
+  }
+
+  function capTruncate(ctx, text, maxWidth) {
+    text = text || "";
+    if (ctx.measureText(text).width <= maxWidth) return text;
+    var lo = 0, hi = text.length;
+    while (lo < hi) {
+      var mid = (lo + hi + 1) >> 1;
+      if (ctx.measureText(text.slice(0, mid) + "…").width <= maxWidth) lo = mid; else hi = mid - 1;
+    }
+    return text.slice(0, lo) + "…";
+  }
+
+  function capDrawPill(ctx, text, x, y, tone, align) {
+    ctx.font = "700 12px " + CAP.fontFamily;
+    var tw = ctx.measureText(text).width;
+    var padX = 10, h = 22;
+    var w = tw + padX * 2;
+    var boxX = align === "right" ? x - w : align === "center" ? x - w / 2 : x;
+    var colors = capToneColors(tone);
+    ctx.fillStyle = colors.bg;
+    capRoundRect(ctx, boxX, y, w, h, h / 2);
+    ctx.fill();
+    ctx.fillStyle = colors.fg;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, boxX + w / 2, y + h / 2 + 1);
+    ctx.textAlign = "left";
+    return w;
+  }
+
+  // Larguras fixas das colunas da tabela de pendentes na captura — todas
+  // menos Observação, que estica pra caber o texto inteiro sem cortar
+  // (ver capObsColWidth).
+  var CAP_TABLE_COLS = [
+    { key: "origem", label: "Origem", w: 260 },
+    { key: "backlog", label: "Backlog", w: 82, num: true },
+    { key: "spa1", label: "Planejadas SPA1", w: 108, num: true },
+    { key: "spa2", label: "Planejadas SPA2", w: 108, num: true },
+    { key: "total", label: "Total", w: 74, num: true },
+    { key: "exp", label: "Expedidas", w: 84, num: true },
+    { key: "pend", label: "Pendentes", w: 90, num: true },
+    { key: "impactoDit", label: "Impacto DIT", w: 100, num: true },
+    { key: "status", label: "Status", w: 160 },
+    { key: "obs", label: "Observação", w: 0 } // calculado dinamicamente
+  ];
+
+  // Largura que a coluna Observação precisa pra caber a maior observação
+  // das linhas exibidas inteira, numa linha só, sem "…" cortando o texto —
+  // nunca menor que o espaço que sobraria naturalmente (remainderW).
+  function capObsColWidth(ctx, pendentesRows, remainderW) {
+    ctx.font = "12px " + CAP.fontFamily;
+    var maxTextW = 0;
+    pendentesRows.forEach(function (r) {
+      if (!r.obs) return;
+      var w = ctx.measureText(r.obs).width;
+      if (w > maxTextW) maxTextW = w;
+    });
+    return Math.max(140, remainderW, Math.ceil(maxTextW) + 20);
+  }
+
+  // Calcula a largura total do canvas (>= CAP.W) já contando o espaço extra
+  // que a coluna Observação vai precisar, pra desenharCaptura nunca ter que
+  // cortar ou estourar a borda direita.
+  function capComputeCanvasWidth(pendentesRows) {
+    var measureCtx = document.createElement("canvas").getContext("2d");
+    var baseContentW = CAP.W - CAP.PAD * 2;
+    var fixedColsW = CAP_TABLE_COLS.reduce(function (a, c) { return c.key === "obs" ? a : a + c.w; }, 0);
+    var obsW = capObsColWidth(measureCtx, pendentesRows, baseContentW - fixedColsW);
+    var extra = Math.max(0, (fixedColsW + obsW) - baseContentW);
+    return CAP.W + extra;
+  }
+
+  // Layout: título -> tiles de KPI -> cards por grupo -> tabela (só pendentes>0).
+  function desenharCaptura(ctx, pendentesRows, canvasW) {
+    var W = canvasW || CAP.W, PAD = CAP.PAD, contentW = W - PAD * 2;
+    var y = PAD;
+
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = CAP.text;
+    ctx.font = "800 22px " + CAP.fontFamily;
+    ctx.fillText("Painel de Expedição — Rotas Pendentes", PAD, y + 22);
+    y += 22 + 6;
+    ctx.fillStyle = CAP.textMuted;
+    ctx.font = "13px " + CAP.fontFamily;
+    ctx.fillText("Estações: SPA1, SPA2 · Gerado em " + new Date().toLocaleString("pt-BR"), PAD, y + 13);
+    y += 13 + 20;
+
+    // --- KPI tiles ---
+    var sum = summarize(state.rows);
+    var pct = sum.total > 0 ? Math.round((sum.exp / sum.total) * 1000) / 10 : 0;
+    var tiles = [
+      { label: "Rotas totais", value: String(sum.total) },
+      { label: "Planejadas SPA1", value: String(sum.spa1) },
+      { label: "Planejadas SPA2", value: String(sum.spa2) },
+      { label: "Backlog", value: String(sum.backlog), tone: sum.backlog > 0 ? "warn" : "" },
+      { label: "Rotas expedidas", value: String(sum.exp), tone: "good" },
+      { label: "Rotas pendentes", value: String(sum.pend), tone: pendingTone(sum.pend) },
+      { label: "% Expedição", value: pct + "%" }
+    ];
+    var tileGap = 10, tileH = 88;
+    var tileW = (contentW - tileGap * (tiles.length - 1)) / tiles.length;
+    tiles.forEach(function (t, i) {
+      var tx = PAD + i * (tileW + tileGap);
+      ctx.fillStyle = CAP.surface;
+      ctx.strokeStyle = CAP.border;
+      ctx.lineWidth = 1;
+      capRoundRect(ctx, tx, y, tileW, tileH, 10);
+      ctx.fill(); ctx.stroke();
+      ctx.save();
+      capRoundRect(ctx, tx, y, tileW, tileH, 10);
+      ctx.clip();
+      ctx.fillStyle = CAP.accent;
+      ctx.fillRect(tx, y, tileW, 3);
+      ctx.restore();
+      ctx.textAlign = "center";
+      ctx.fillStyle = CAP.textFaint;
+      ctx.font = "700 10.5px " + CAP.fontFamily;
+      ctx.fillText(t.label.toUpperCase(), tx + tileW / 2, y + 26);
+      ctx.fillStyle = t.tone ? capToneColors(t.tone).fg : CAP.text;
+      ctx.font = "800 23px " + CAP.fontFamily;
+      ctx.fillText(t.value, tx + tileW / 2, y + 58);
+      ctx.textAlign = "left";
+    });
+    y += tileH + 12;
+
+    // --- Group cards ---
+    var groups = ["XPT", "SVC", "NEX", "DC"];
+    var gGap = 10, gH = 60;
+    var gW = (contentW - gGap * (groups.length - 1)) / groups.length;
+    groups.forEach(function (g, i) {
+      var rows = state.rows.filter(function (r) { return r.grupo === g; });
+      var pend = Math.max(0, rows.reduce(function (a, r) { return a + pending(r); }, 0));
+      var tot = rows.reduce(function (a, r) { return a + total(r); }, 0);
+      var gx = PAD + i * (gW + gGap);
+      ctx.fillStyle = CAP.surface;
+      ctx.strokeStyle = CAP.border;
+      capRoundRect(ctx, gx, y, gW, gH, 10);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = CAP.cat[g];
+      capRoundRect(ctx, gx + 12, y + 14, 8, gH - 28, 3);
+      ctx.fill();
+      ctx.fillStyle = CAP.text;
+      ctx.font = "700 13px " + CAP.fontFamily;
+      ctx.fillText(g, gx + 30, y + 26);
+      ctx.fillStyle = CAP.textMuted;
+      ctx.font = "11px " + CAP.fontFamily;
+      ctx.fillText(rows.length + " origens · " + tot + " rotas", gx + 30, y + 42);
+      var pendTone = pendingTone(pend);
+      ctx.fillStyle = capToneColors(pendTone).fg;
+      ctx.font = "800 18px " + CAP.fontFamily;
+      ctx.textAlign = "right";
+      ctx.fillText(String(pend), gx + gW - 14, y + 38);
+      ctx.textAlign = "left";
+    });
+    y += gH + 16;
+
+    // --- Table (somente pendentes > 0) ---
+    var cols = CAP_TABLE_COLS.map(function (c) { return { key: c.key, label: c.label, w: c.w, num: c.num }; });
+    var fixedSum = cols.reduce(function (a, c) { return c.key === "obs" ? a : a + c.w; }, 0);
+    cols[cols.length - 1].w = capObsColWidth(ctx, pendentesRows, contentW - fixedSum);
+    var colX = [];
+    var cx = PAD;
+    cols.forEach(function (c) { colX.push(cx); cx += c.w; });
+
+    var rowH = 30, headH = 32, footH = 32;
+    var tableTop = y;
+    ctx.fillStyle = CAP.surface;
+    ctx.strokeStyle = CAP.border;
+    var tableH = headH + pendentesRows.length * rowH + footH;
+    capRoundRect(ctx, PAD, tableTop, contentW, tableH, 10);
+    ctx.fill(); ctx.stroke();
+
+    // Header
+    ctx.save();
+    capRoundRect(ctx, PAD, tableTop, contentW, headH, 10);
+    ctx.clip();
+    ctx.fillStyle = CAP.brand;
+    ctx.fillRect(PAD, tableTop, contentW, headH);
+    ctx.restore();
+    ctx.fillStyle = CAP.brandInk;
+    ctx.font = "700 10.5px " + CAP.fontFamily;
+    cols.forEach(function (c, i) {
+      // Origem fica à esquerda (igual à tela); todas as outras colunas
+      // centralizadas sob seus valores, no mesmo padrão da tabela na tela.
+      ctx.textAlign = i === 0 ? "left" : "center";
+      var tx = i === 0 ? colX[i] + 10 : colX[i] + c.w / 2;
+      ctx.fillText(c.label.toUpperCase(), tx, tableTop + headH / 2 + 4);
+    });
+    ctx.textAlign = "left";
+
+    // Rows
+    var ry = tableTop + headH;
+    pendentesRows.forEach(function (r, idx) {
+      if (idx % 2 === 1) { ctx.fillStyle = "#f5f4ee"; ctx.fillRect(PAD, ry, contentW, rowH); }
+      ctx.strokeStyle = CAP.border;
+      ctx.beginPath(); ctx.moveTo(PAD, ry + rowH); ctx.lineTo(PAD + contentW, ry + rowH); ctx.stroke();
+
+      var t = total(r), p = pending(r);
+      var midY = ry + rowH / 2 + 4;
+
+      // Origem: dot + grupo + nome
+      var ox = colX[0] + 10;
+      ctx.fillStyle = CAP.cat[r.grupo];
+      ctx.beginPath(); ctx.arc(ox + 3, ry + rowH / 2, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = CAP.textFaint;
+      ctx.font = "700 10.5px " + CAP.fontFamily;
+      ctx.fillText(r.grupo, ox + 11, midY);
+      var grupoW = ctx.measureText(r.grupo).width;
+      ctx.fillStyle = CAP.text;
+      ctx.font = "600 12.5px " + CAP.fontFamily;
+      var nameMaxW = cols[0].w - (11 + grupoW + 18);
+      ctx.fillText(capTruncate(ctx, r.origem, nameMaxW), ox + 11 + grupoW + 8, midY);
+
+      // Numeric columns — centralizadas sob o cabeçalho, igual à tela
+      ctx.font = "700 12.5px " + CAP.fontFamily;
+      ctx.fillStyle = CAP.text;
+      ctx.textAlign = "center";
+      ["backlog", "spa1", "spa2"].forEach(function (key, i) {
+        var ci = i + 1;
+        ctx.fillText(String(r[key]), colX[ci] + cols[ci].w / 2, midY);
+      });
+      ctx.fillText(String(t), colX[4] + cols[4].w / 2, midY);
+      ctx.fillText(String(r.expedidas), colX[5] + cols[5].w / 2, midY);
+      ctx.textAlign = "left";
+
+      // Pendentes pill
+      capDrawPill(ctx, String(p), colX[6] + cols[6].w / 2, ry + (rowH - 22) / 2, pendingTone(p), "center");
+
+      // Impacto DIT
+      ctx.fillStyle = CAP.text;
+      ctx.font = "700 12.5px " + CAP.fontFamily;
+      ctx.textAlign = "center";
+      ctx.fillText(String(r.impactoDit || 0), colX[7] + cols[7].w / 2, midY);
+      ctx.textAlign = "left";
+
+      // Status
+      if (r.status) {
+        var statusTone = STATUS_TONE[r.status] || "muted";
+        ctx.font = "700 10.5px " + CAP.fontFamily;
+        var maxStatusW = cols[8].w - 20;
+        capDrawPill(ctx, capTruncate(ctx, r.status, maxStatusW), colX[8] + cols[8].w / 2, ry + (rowH - 22) / 2, statusTone, "center");
+      } else {
+        ctx.fillStyle = CAP.textFaint;
+        ctx.font = "12px " + CAP.fontFamily;
+        ctx.textAlign = "center";
+        ctx.fillText("— sem status —", colX[8] + cols[8].w / 2, midY);
+        ctx.textAlign = "left";
       }
-    }
-    // Auto-Descarga iniciada: YMS IN preenchido mas sem YMS OUT
-    else if (ymsIn && ymsIn.trim()) {
-      const cur = manualMap[id]?.status_patio || ""
-      // Só muda se ainda está em Não Chegou (não sobrescreve mudanças manuais)
-      if (cur === "Não Chegou" || cur === "") {
-        if (!manualMap[id]) manualMap[id] = {}
-        manualMap[id].status_patio = "Aguardando Doca"
-        manualMap[id].route_id     = id
-        autoUpdates.push({ id, status: "Aguardando Doca" })
-      }
-    }
 
-    filtered.push({ id, placa, ymsIn, ymsOut, pacotes, motorista, _antecipada: isAnt && !isMain, _anterior: isAnt0 && !isMain && !isAnt })
+      // Observação
+      ctx.fillStyle = CAP.text;
+      ctx.font = "12px " + CAP.fontFamily;
+      ctx.textAlign = "center";
+      ctx.fillText(capTruncate(ctx, r.obs, cols[9].w - 20), colX[9] + cols[9].w / 2, midY);
+      ctx.textAlign = "left";
+
+      ry += rowH;
+    });
+
+    // Footer — soma de TODAS as origens (igual aos tiles de KPI no topo),
+    // não só das linhas pendentes listadas na tabela, senão Planejadas e
+    // Expedidas ficam menores do que o total real da operação.
+    ctx.fillStyle = CAP.brand;
+    ctx.save();
+    capRoundRect(ctx, PAD, tableTop, contentW, tableH, 10);
+    ctx.clip();
+    ctx.fillRect(PAD, ry, contentW, footH);
+    ctx.restore();
+    ctx.fillStyle = CAP.brandInk;
+    ctx.font = "800 12px " + CAP.fontFamily;
+    ctx.fillText(pendentesRows.length + " " + (pendentesRows.length === 1 ? "origem" : "origens"), colX[0] + 10, ry + footH / 2 + 4);
+    ctx.textAlign = "center";
+    ctx.fillText(String(sum.backlog), colX[1] + cols[1].w / 2, ry + footH / 2 + 4);
+    ctx.fillText(String(sum.spa1), colX[2] + cols[2].w / 2, ry + footH / 2 + 4);
+    ctx.fillText(String(sum.spa2), colX[3] + cols[3].w / 2, ry + footH / 2 + 4);
+    ctx.fillText(String(sum.total), colX[4] + cols[4].w / 2, ry + footH / 2 + 4);
+    ctx.fillText(String(sum.exp), colX[5] + cols[5].w / 2, ry + footH / 2 + 4);
+    ctx.fillText(String(sum.pend), colX[6] + cols[6].w / 2, ry + footH / 2 + 4);
+    ctx.textAlign = "left";
+
+    y = tableTop + tableH + PAD;
+    return y;
   }
 
-  filtered.sort((a,b) => {
-    // Grupos separados: anteriores primeiro, normais, antecipadas por último
-    const grpA = a._anterior ? 0 : a._antecipada ? 2 : 1
-    const grpB = b._anterior ? 0 : b._antecipada ? 2 : 1
-    if (grpA !== grpB) return grpA - grpB
-    // Dentro de cada grupo: ordem por YMS IN crescente, vazios por último
-    const ae = effectiveIn(a), be = effectiveIn(b)
-    if (!ae && !be) return 0
-    if (!ae) return 1
-    if (!be) return -1
-    return ae.localeCompare(be)
-  })
-  render()
+  // Mesmo recorte usado na captura de imagem (origens com pendência != 0,
+  // incluindo as negativas — Expedidas acima do Total — que também entram
+  // pra ficarem visíveis com o sinal de "-"), agrupadas por grupo+origem —
+  // texto pronto pra colar num grupo/chat, com a Observação da linha
+  // espelhada junto quando ela existir.
+  function buildReportText() {
+    var sum = summarize(state.rows);
 
-  if (autoUpdates.length) {
-    autoUpdates.forEach(({ id, status }) => {
-      rtdbPatch(`lh_monitoramento/${encodeKey(id)}`, {
-        route_id: id, status_patio: status, updated_at: new Date().toISOString()
-      }).catch(e => console.warn("Auto-status save error:", e))
-    })
+    var linhas = [];
+    linhas.push("📦 MONITORAMENTO LM - PARCIAL");
+    linhas.push("");
+    linhas.push("▶️ Planejadas - " + sum.total);
+    linhas.push("▶️ Expedidas - " + sum.exp);
+    linhas.push("▶️ Pendentes - " + sum.pend);
+    linhas.push("");
+
+    ["XPT", "SVC", "NEX", "DC"].forEach(function (g) {
+      var pendGrupo = Math.max(0, state.rows.filter(function (r) { return r.grupo === g; })
+        .reduce(function (a, r) { return a + pending(r); }, 0));
+      linhas.push("> " + g + " - " + pendGrupo);
+    });
+
+    return linhas.join("\n");
   }
-}
 
-// ── Constants ────────────────────────────────────────────────────────
-const DOCAS      = ["-","D1","D2","D3","D4","D5","D6","D7","D8","D9","D10"]
-const STATUSES   = ["Aguardando Doca","Concluída","Descarga iniciada","Docada","Fos","Não Chegou","Bloqueada"]
-const PERFIS     = ["Granel","Paletizada"]
-const RTYPES     = ["—","MP","Pacotes"]
-const CLS_MAP    = {
-  "Concluída":"st-Concluida","Descarga iniciada":"st-Descarga",
-  "Docada":"st-Docada","Fos":"st-Fos","Não Chegou":"st-NaoChegou",
-  "Aguardando Doca":"st-Aguardando","Bloqueada":"st-Bloqueada"
-}
-
-function mkSel(opts, cur, id, field, extraClass="") {
-  return `<select data-id="${id}" data-field="${field}" class="${extraClass}">${
-    opts.map(o=>`<option${o===cur?" selected":""}>${o}</option>`).join("")
-  }</select>`
-}
-
-// Botão HR INICIO
-// - Inativo: clique registra hora atual e muda status
-// - Ativo: mostra hora + botão lápis (editar) + botão ✕ (apagar)
-function mkReversaBtn(id, m) {
-  const time = m.reversa_hora || ""
-  if (time) {
-    return `<div class="btn-reversa active" style="flex-direction:row;gap:4px;justify-content:center;padding:3px 4px;">
-      <span class="rev-time-edit" data-id="${id}" title="Editar horário" style="cursor:pointer;font-size:11px;font-weight:800;flex:1;text-align:center;">${time}</span>
-      <span class="rev-clear" data-id="${id}" title="Apagar horário" style="font-size:9px;opacity:.75;cursor:pointer;line-height:1;flex-shrink:0;">✕</span>
-    </div>`
-  }
-  return `<div class="btn-reversa" data-id="${id}" title="Registrar hora de início">Início</div>`
-}
-
-// Placa: nome + tooltip transportadora + mini-toggles MP / PCT + pílula
-function placaHTML(placa, m, id, motorista, antecipada, anteriorBadge) {
-  const rtype = m.reversa_tipo || "—"
-  const mpOn  = rtype === "MP"
-  const pkOn  = rtype === "Pacotes"
-
-  const toggles = `<div class="reversa-toggles">
-    <span class="rtgl mp${mpOn?" on mp":""}" data-id="${id}" data-rtype="MP">MP</span>
-    <span class="rtgl pkg${pkOn?" on pkg":""}" data-id="${id}" data-rtype="Pacotes">PCT</span>
-  </div>`
-
-  let tag = ""
-  if (mpOn) tag = `<span class="reversa-tag mp">↩ REVERSA MP</span>`
-  if (pkOn) tag = `<span class="reversa-tag pkg">↩ REV. PACOTES</span>`
-
-  const tip = motorista
-    ? `<span class="transp-tip">🚛 ${motorista}</span>`
-    : ""
-
-  const antBadge = antecipada
-    ? `<span class="antecip-badge">🟣 antecipada</span>`
-    : anteriorBadge
-      ? `<span class="antecip-badge" style="background:#b4522022;color:#fb923c;border-color:#b4522055;">🟠 anterior</span>`
-      : ""
-
-  return `<div class="placa-wrap" data-placa-id="${id}">
-    ${tip}
-    <span class="placa">${placa}</span>
-    ${antBadge}
-    ${toggles}
-    ${tag}
-  </div>`
-}
-
-// ── Render ───────────────────────────────────────────────────────────
-function render() {
-  let html="", visNum=0, concluidas=0, descarga=0, naoChegou=0, totalPacotes=0, aguardando=0
-  for (let i=0; i<filtered.length; i++) {
-    const row = filtered[i]
-    const id  = row.id
-    const m   = manualMap[id]||{doca:"-",status_patio:"Não Chegou",perfil:"Granel",reversa_hora:"",reversa_tipo:"—"}
-    const oculto = !!m.oculto
-    const cls = (oculto ? "row-hidden " : "") + (row._antecipada ? "ant " : "") + (row._anterior ? "ant-anterior " : "") + (CLS_MAP[m.status_patio]||"st-NaoChegou")
-
-    // Contabilizar APENAS placas visíveis nos cards
-    if (!oculto) {
-      if (m.status_patio==="Concluída")         concluidas++
-      if (m.status_patio==="Descarga iniciada") descarga++
-      if (m.status_patio==="Não Chegou")        naoChegou++
-      if (m.status_patio==="Aguardando Doca")   aguardando++
-      totalPacotes += parseInt(row.pacotes)||0
+  async function copiarReport() {
+    var btn = document.getElementById("btn-copy-report");
+    btn.disabled = true;
+    try {
+      await navigator.clipboard.writeText(buildReportText());
+      showToast("Report copiado para a área de transferência.");
+    } catch (e) {
+      showToast("Não foi possível copiar o report.");
+    } finally {
+      btn.disabled = false;
     }
-
-    if (!oculto) visNum++
-
-    // YMS IN/OUT: CSV tem prioridade; manual como fallback
-    const ymsInVal  = hhmm(row.ymsIn)  !== "—" ? hhmm(row.ymsIn)  : (m.yms_in_manual  || "")
-    const ymsOutVal = hhmm(row.ymsOut) !== "—" ? hhmm(row.ymsOut) : (m.yms_out_manual || "")
-
-    const mkTimeCell = (val, field) => {
-      if (val) return `<span class="yms-val" data-id="${id}" data-field="${field}" title="Clique para editar">${val}</span>`
-      return `<span class="yms-edit" data-id="${id}" data-field="${field}" title="Inserir horário">—</span>`
-    }
-
-    const ocultarBtn = `<span class="btn-ocultar${oculto?" oculto":""}" data-id="${id}" title="${oculto?"Mostrar placa":"Ocultar placa"}">${oculto?"👁":"–"}</span>`
-
-    html += `<tr class="${cls}">
-  <td style="white-space:nowrap;"><b>${oculto?"·":visNum}</b>${ocultarBtn}${row._manual ? `<br><span class="del-manual" data-id="${id}" title="Excluir placa manual" style="font-size:9px;cursor:pointer;color:#f87171;font-weight:700;letter-spacing:.3px;">✕</span>` : ""}</td>
-  <td class="td-doca">${mkSel(DOCAS, m.doca, id,"doca")}</td>
-  <td class="td-rev">${mkReversaBtn(id, m)}</td>
-  <td class="td-placa">${placaHTML(row.placa, m, id, row.motorista, row._antecipada, row._anterior)}</td>
-  <td class="td-yms">${mkTimeCell(ymsInVal,  "yms_in_manual")}</td>
-  <td class="td-yms">${mkTimeCell(ymsOutVal, "yms_out_manual")}</td>
-  <td>${row.pacotes||"—"}</td>
-  <td class="td-status">${mkSel(STATUSES,m.status_patio,id,"status_patio")}</td>
-  <td class="td-perfil">${mkSel(PERFIS, m.perfil, id,"perfil")}</td>
-</tr>`
   }
-  if (!html) html = `<tr><td colspan="9" class="empty-msg">
-    Nenhum registro SPA1 / SPA2 em <strong>${selectedDate}</strong><br>
-    <small>Verifique a data ou envie um arquivo atualizado.</small></td></tr>`
 
-  $("tbody").innerHTML          = html
-  $("kpiTotal").textContent     = visNum
-  $("kpiConcluida").textContent = concluidas
-  $("kpiDescarga").textContent  = descarga
-  $("kpiNaoChegou").textContent = naoChegou
-  $("kpiPacotes").textContent   = totalPacotes.toLocaleString("pt-BR")
-  $("kpiAguardando").textContent= aguardando
-}
+  async function capturarComoImagem() {
+    var btn = document.getElementById("btn-print");
+    btn.disabled = true;
+    showToast("Gerando imagem em HD...");
+    try {
+      var pendentesRows = state.rows.filter(function (r) { return pending(r) !== 0 && r.status !== "NÃO INICIADO"; })
+        .sort(function (a, b) { return (a.grupo + a.origem).localeCompare(b.grupo + b.origem); });
 
-// ── Clear all ────────────────────────────────────────────────────────
-async function clearAll() {
-  if (!confirm("Apagar TODOS os dados do Firebase?\nEssa ação não pode ser desfeita.")) return
-  loading("Apagando…")
-  try {
-    await rtdbDelete("lh_csv_cache")
-    await rtdbDelete("lh_monitoramento")
-    allRows=[]; filtered=[]; manualMap={}
-    render(); setStatus("🗑 Dados apagados.","#f87171")
-    showToast("🗑 Dados apagados.","err")
-  } catch(e) { showToast("❌ "+e.message,"err"); console.error(e) }
-  done()
-}
+      var scale = 2;
+      var headH = 32, rowH = 30, footH = 32;
+      var tableH = headH + pendentesRows.length * rowH + footH;
+      var totalH = CAP.PAD /*top*/ + (22 + 6 + 13 + 20) + (88 + 12) + (60 + 16) + tableH + CAP.PAD;
+      // Alarga o canvas se alguma Observação precisar de mais espaço do que
+      // a largura padrão pra caber inteira numa linha só (sem cortar/"…").
+      var capW = capComputeCanvasWidth(pendentesRows);
 
-// ── Export PNG (alta resolução) ───────────────────────────────────
-async function exportImg() {
-  loading("Gerando imagem em alta resolução…")
-  try {
-    const area   = $("printArea")
-    const scroll = area.querySelector(".table-scroll")
-    const table  = area.querySelector("table")
-    const cs     = getComputedStyle(document.documentElement)
-    const bg     = cs.getPropertyValue("--bg").trim() || "#f1f3f8"
+      var canvas = document.createElement("canvas");
+      canvas.width = capW * scale;
+      canvas.height = Math.ceil(totalH) * scale;
+      var ctx = canvas.getContext("2d");
+      ctx.scale(scale, scale);
+      ctx.fillStyle = CAP.bg;
+      ctx.fillRect(0, 0, capW, totalH);
 
-    // 1. Substituir selects por spans legíveis
-    const originals = []
-    area.querySelectorAll("td select").forEach(sel => {
-      const val  = sel.options[sel.selectedIndex]?.text || sel.value
-      const span = document.createElement("span")
-      span.textContent = val
-      span.style.cssText = [
-        "display:block","width:100%","text-align:center",
-        "font-size:12px","font-family:'Barlow',sans-serif","font-weight:700",
-        "color:inherit","overflow:hidden","text-overflow:ellipsis","white-space:nowrap"
-      ].join(";")
-      originals.push({ sel, parent: sel.parentNode, span })
-      sel.parentNode.replaceChild(span, sel)
-    })
+      desenharCaptura(ctx, pendentesRows, capW);
 
-    // 2. Expandir overflow ANTES de medir
-    const prevScrollO = scroll.style.overflow
-    const prevScrollH = scroll.style.height
-    const prevAreaW   = area.style.width
-    const prevAreaO   = area.style.overflow
-
-    scroll.style.overflow = "visible"
-    scroll.style.height   = "auto"
-    area.style.overflow   = "visible"
-
-    // 3. Largura completa
-    const fullW = Math.max(area.scrollWidth, table ? table.scrollWidth : 900, 900)
-    area.style.width = fullW + "px"
-
-    // 4. Altura exata: bottom da última linha visível + 16px de padding
-    const areaTop   = area.getBoundingClientRect().top + window.scrollY
-    const allRows   = area.querySelectorAll("tbody tr:not([style*='display: none']):not([style*='display:none'])")
-    let lastBottom  = area.scrollHeight   // fallback
-    if (allRows.length) {
-      const lastRow  = allRows[allRows.length - 1]
-      const rowRect  = lastRow.getBoundingClientRect()
-      lastBottom = rowRect.bottom + window.scrollY - areaTop
+      await new Promise(function (resolve) {
+        canvas.toBlob(async function (blob) {
+          try {
+            await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+            showToast("Imagem copiada para a área de transferência.");
+          } catch (err) {
+            showToast("Não foi possível copiar a imagem.");
+          }
+          resolve();
+        }, "image/png");
+      });
+    } catch (e) {
+      showToast("Erro ao gerar imagem: " + e.message);
+    } finally {
+      btn.disabled = false;
     }
-    const fullH = Math.ceil(lastBottom) + 48   // 48px padding no fundo (mais espaço abaixo da tabela)
-
-    const canvas = await html2canvas(area, {
-      scale: 6,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: bg,
-      scrollX: -(window.scrollX + area.getBoundingClientRect().left),
-      scrollY: -(window.scrollY + area.getBoundingClientRect().top),
-      windowWidth:  fullW,
-      windowHeight: fullH,
-      width:  fullW,
-      height: fullH,
-      logging: false,
-      imageTimeout: 0,
-      onclone: (doc) => {
-        const cloneScroll = doc.querySelector(".table-scroll")
-        if (cloneScroll) { cloneScroll.style.overflow = "visible"; cloneScroll.style.height = "auto" }
-        const cloneWrap = doc.querySelector(".table-wrap")
-        if (cloneWrap) { cloneWrap.style.overflow = "visible"; cloneWrap.style.paddingBottom = "0" }
-        const cloneArea = doc.getElementById("printArea")
-        if (cloneArea) { cloneArea.style.overflow = "visible"; cloneArea.style.paddingBottom = "0" }
-        doc.querySelectorAll("td, th").forEach(el => {
-          el.style.overflow = "hidden"; el.style.textOverflow = "ellipsis"
-          el.style.whiteSpace = "nowrap"; el.style.fontSize = "12px"
-        })
-        doc.querySelectorAll("thead th").forEach(el => { el.style.fontSize = "13px"; el.style.padding = "10px 6px" })
-        doc.querySelectorAll("tbody td").forEach(el => { el.style.padding = "7px 5px"; el.style.fontSize = "12px" })
-      }
-    })
-
-    // 5. Restaurar
-    scroll.style.overflow = prevScrollO
-    scroll.style.height   = prevScrollH
-    area.style.overflow   = prevAreaO
-    area.style.width      = prevAreaW
-    originals.forEach(({ sel, parent, span }) => parent.replaceChild(sel, span))
-
-    // 6. Salvar PNG
-    const a = document.createElement("a")
-    a.download = "monitoramento_" + selectedDate + ".png"
-    a.href = canvas.toDataURL("image/png")
-    a.click()
-
-  } catch(e) {
-    console.error(e)
-    showToast("❌ Erro ao gerar imagem","err")
   }
-  done()
-}
+
+  function tick() {
+    var now = new Date();
+    document.getElementById("clock").textContent = now.toLocaleTimeString("pt-BR");
+  }
+
+  function updateAutoSyncInfo() {
+    var el = document.getElementById("auto-sync-info");
+    if (!el) return;
+    if (state.liveGeneratedAt) {
+      var d = new Date(state.liveGeneratedAt);
+      var when = isNaN(d.getTime()) ? state.liveGeneratedAt : d.toLocaleString("pt-BR");
+      el.textContent = "· Última sincronização automática: " + when;
+    } else {
+      el.textContent = "";
+    }
+  }
+
+  function init() {
+    var merged = load();
+    if (merged) persist();
+    renderAll();
+    updateAutoSyncInfo();
+    tick();
+    setInterval(tick, 1000);
+
+    syncFromFirebase(false);
+    setInterval(function () { syncFromFirebase(false); }, FIREBASE_SYNC_INTERVAL_MS);
+
+    document.getElementById("btn-sync").addEventListener("click", function () { syncFromFirebase(true); });
+
+    document.getElementById("search").addEventListener("input", function (e) {
+      state.search = e.target.value;
+      renderTable();
+    });
+
+    document.getElementById("toggle-hide-zero").addEventListener("change", function (e) {
+      state.hideZeroPending = e.target.checked;
+      renderTable();
+    });
+
+    document.getElementById("btn-add").addEventListener("click", function () {
+      var name = prompt("Nome da nova origem (ex: BRNPA9999):");
+      if (!name) return;
+      var group = (prompt("Grupo (XPT, SVC, NEX ou DC):", "XPT") || "XPT").toUpperCase().trim();
+      if (!CATEGORIES[group]) group = "XPT";
+      var novaOrigem = { id: state.nextId++, grupo: group, origem: name.trim(), backlog: 0, spa1: 0, spa2: 0, expedidas: 0, impactoDit: 0, status: "", obs: "" };
+      state.rows.push(novaOrigem);
+      persist();
+      renderAll();
+      pushManualField(novaOrigem);
+      showToast('Origem "' + name.trim() + '" adicionada.');
+    });
+
+    document.getElementById("btn-export").addEventListener("click", exportCsv);
+
+    document.getElementById("btn-import").addEventListener("click", function () {
+      document.getElementById("file-import").click();
+    });
+    document.getElementById("file-import").addEventListener("change", function (e) {
+      var file = e.target.files && e.target.files[0];
+      if (file) importCsvFile(file);
+      e.target.value = "";
+    });
+
+    document.getElementById("btn-copy-report").addEventListener("click", copiarReport);
+    document.getElementById("btn-clear-status-obs").addEventListener("click", limparStatusObs);
+    document.getElementById("btn-unlock-all").addEventListener("click", removerTravasManuais);
+    document.getElementById("btn-print").addEventListener("click", capturarComoImagem);
+
+    bindSortEvents();
+  }
+
+  init();
+})();
 </script>
-</body>
-</html>
