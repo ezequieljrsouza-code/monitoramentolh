@@ -756,11 +756,23 @@
     sortDir: 1
   };
 
+  // Prioridade fixa de grupo usada ao ordenar pela coluna Origem — sem isso,
+  // comparar "grupo||origem" como texto puro ordena os grupos em ordem
+  // alfabética (DC, NEX, SVC, XPT), colocando NEX e DC na frente de XPT e
+  // SVC. Mesma ordem já usada nos outros lugares do painel (CATEGORIES,
+  // agrupamento do Report, captura de imagem etc.).
+  var GROUP_SORT_PRIORITY = { XPT: 0, SVC: 1, NEX: 2, DC: 3 };
+  function groupSortKey(grupo) {
+    var p = GROUP_SORT_PRIORITY[grupo];
+    return (p === undefined ? 9 : p) + "";
+  }
+
   var SORT_VALUE_GETTERS = {
-    // Ordena primeiro por grupo (XPT/SVC/NEX/DC) e só depois por nome — assim
-    // origens do mesmo grupo continuam juntas ao ordenar por essa coluna, em
-    // vez de se espalharem numa ordem puramente alfabética pelo nome.
-    origem: function (r) { return (r.grupo + "||" + r.origem).toLowerCase(); },
+    // Ordena primeiro por grupo (XPT/SVC/NEX/DC, prioridade fixa) e só depois
+    // por nome — assim origens do mesmo grupo continuam juntas E os grupos
+    // ficam na ordem pretendida, em vez de se espalharem numa ordem
+    // puramente alfabética (nem pelo grupo, nem pelo nome).
+    origem: function (r) { return (groupSortKey(r.grupo) + "||" + r.origem).toLowerCase(); },
     backlog: function (r) { return Number(r.backlog) || 0; },
     spa1: function (r) { return Number(r.spa1) || 0; },
     spa2: function (r) { return Number(r.spa2) || 0; },
