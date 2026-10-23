@@ -1115,14 +1115,14 @@ $("btnModalAdd").addEventListener("click", async () => {
 $("inputPlaca").addEventListener("keydown", e => { if (e.key==="Enter") $("btnModalAdd").click() })
 $("inputTransp").addEventListener("keydown", e => { if (e.key==="Enter") $("btnModalAdd").click() })
 
-// File chosen → show table IMMEDIATELY, then optionally cloud upload
+// File chosen → show table IMMEDIATELY and save to cloud (so F5 keeps the last file)
 $("fileInput").addEventListener("change", e => {
   const f = e.target.files[0]
   if (!f) return
   $("fileName").textContent = f.name
   const name = f.name.toLowerCase()
-  if (name.endsWith(".xlsx") || name.endsWith(".xls")) readXLSX(f, false)
-  else readCSV(f, false)
+  if (name.endsWith(".xlsx") || name.endsWith(".xls")) readXLSX(f, true)
+  else readCSV(f, true)
 })
 
 // Table select changes → save to cloud instantly
